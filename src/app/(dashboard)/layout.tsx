@@ -79,7 +79,7 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
         </aside>
 
         {/* Content */}
-        <main className="min-h-[calc(100dvh-56px)] px-3 py-4 md:px-6">
+        <main className="min-h-[calc(100dvh-56px)] px-3 py-10 md:px-16">
           {/* Breadcrumb (basic) */}
           <Breadcrumb pathname={pathname || "/"} />
 
