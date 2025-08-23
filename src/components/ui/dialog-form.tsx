@@ -17,10 +17,10 @@ import { Label } from "@/components/ui/label"
 interface Field {
   id: string
   label: string
-  type?: string
-  defaultValue?: string
+  type?: "text" | "textarea" | "select" | "radio" | "checkbox" | "date" | "file"
+  defaultValue?: string | string[]
   placeholder?: string
-  options?: string[] // dùng cho select
+  options?: string[] // dùng cho select, radio, checkbox
 }
 
 interface DialogFormProps {
@@ -69,7 +69,7 @@ export function DialogForm({
                   <textarea
                     id={field.id}
                     name={field.id}
-                    defaultValue={field.defaultValue}
+                    defaultValue={field.defaultValue as string}
                     placeholder={field.placeholder}
                     className="border rounded p-2"
                   />
@@ -77,7 +77,7 @@ export function DialogForm({
                   <select
                     id={field.id}
                     name={field.id}
-                    defaultValue={field.defaultValue}
+                    defaultValue={field.defaultValue as string}
                     className="border rounded p-2"
                   >
                     {field.options?.map((opt) => (
@@ -86,12 +86,43 @@ export function DialogForm({
                       </option>
                     ))}
                   </select>
+                ) : field.type === "radio" ? (
+                  <div className="flex gap-4">
+                    {field.options?.map((opt) => (
+                      <label key={opt} className="flex items-center gap-2">
+                        <input
+                          type="radio"
+                          name={field.id}
+                          value={opt}
+                          defaultChecked={field.defaultValue === opt}
+                        />
+                        {opt}
+                      </label>
+                    ))}
+                  </div>
+                ) : field.type === "checkbox" ? (
+                  <div className="flex flex-col gap-2">
+                    {field.options?.map((opt) => (
+                      <label key={opt} className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          name={field.id}
+                          value={opt}
+                          defaultChecked={
+                            Array.isArray(field.defaultValue) &&
+                            field.defaultValue.includes(opt)
+                          }
+                        />
+                        {opt}
+                      </label>
+                    ))}
+                  </div>
                 ) : (
                   <Input
                     id={field.id}
                     name={field.id}
                     type={field.type || "text"}
-                    defaultValue={field.defaultValue}
+                    defaultValue={field.defaultValue as string}
                     placeholder={field.placeholder}
                   />
                 )}
