@@ -1,5 +1,3 @@
-import React from "react";
-
 export type DataResponse<T> = {
   status: string;
   message: string;

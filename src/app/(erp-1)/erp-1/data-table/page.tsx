@@ -13,6 +13,8 @@ export default function DocumentListTableSection() {
   const [loading, setLoading] = React.useState(false)
   const pageSize = 10
 
+  console.log(loading);
+
   React.useEffect(() => {
     const fetchData = async () => {
       setLoading(true)
