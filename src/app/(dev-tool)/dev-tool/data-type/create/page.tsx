@@ -7,6 +7,11 @@ interface Field {
   required: boolean
 }
 
+interface BO {
+  id: number
+  name: string
+}
+
 export default function CreateDataType() {
   const [boName, setBoName] = React.useState("MyBO")
   const [fields, setFields] = React.useState<Field[]>([
@@ -14,6 +19,23 @@ export default function CreateDataType() {
   ])
   const [selectedIndex, setSelectedIndex] = React.useState<number | null>(0)
   const [loading, setLoading] = React.useState(false)
+  const [boList, setBoList] = React.useState<BO[]>([])
+
+  // Load danh sách BO có sẵn để cho phép chọn làm type
+  React.useEffect(() => {
+    const fetchBOs = async () => {
+      try {
+        const res = await fetch("/api/data-types")
+        if (res.ok) {
+          const data = await res.json()
+          setBoList(data)
+        }
+      } catch (err) {
+        console.error("Failed to fetch BO list:", err)
+      }
+    }
+    fetchBOs()
+  }, [])
 
   const handleChange = (key: keyof Field, value: string | boolean) => {
     if (selectedIndex === null) return
@@ -129,6 +151,13 @@ export default function CreateDataType() {
                   <option value="number">Number</option>
                   <option value="boolean">Boolean</option>
                   <option value="Date">Date</option>
+                  <optgroup label="Business Objects">
+                    {boList.map(bo => (
+                      <option key={bo.id} value={bo.name}>
+                        {bo.name}
+                      </option>
+                    ))}
+                  </optgroup>
                 </select>
               </div>
 
