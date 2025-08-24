@@ -52,7 +52,7 @@ export default function CreateDataType() {
   const addField = () => {
     setFields([
       ...fields,
-      { name: "NewField", type: "string", required: false, isList: false },
+      { name: "NewField", type: "string", required: true, isList: false }, // 👈 đổi mặc định required = true
     ])
     setSelectedIndex(fields.length)
   }
@@ -120,9 +120,8 @@ export default function CreateDataType() {
               <li
                 key={i}
                 onClick={() => setSelectedIndex(i)}
-                className={`px-3 py-2 cursor-pointer ${
-                  i === selectedIndex ? "bg-blue-100" : "hover:bg-gray-100"
-                }`}
+                className={`px-3 py-2 cursor-pointer ${i === selectedIndex ? "bg-blue-100" : "hover:bg-gray-100"
+                  }`}
               >
                 {f.name} ({f.type}) {f.isList ? "[]" : ""}
                 {boList.find(b => b.name === f.type) && renderSubFields(f.type)}

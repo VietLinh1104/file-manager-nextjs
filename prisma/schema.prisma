@@ -10,24 +10,26 @@ datasource db {
 model DataType {
   id        Int      @id @default(autoincrement())
   name      String   @unique // tên BO duy nhất
-  fields    Field[] // các field thuộc về BO này
+  fields    Field[]
   createdAt DateTime @default(now())
 
   // Các field từ BO khác tham chiếu tới BO này
   referencedBy Field[] @relation("FieldRefBO")
+
+  tsFilePath  String?   // đường dẫn file type đã generate
 }
+
 
 model Field {
   id       Int     @id @default(autoincrement())
   name     String
-  type     String // "string" | "number" | "boolean" | "Date" | tên BO khác
+  type     String
   required Boolean
+  isList   Boolean @default(false)   // 👈 thêm dòng này
 
-  // Field này thuộc về DataType nào
   dataType   DataType @relation(fields: [dataTypeId], references: [id], onDelete: Cascade)
   dataTypeId Int
 
-  // Field này có thể tham chiếu tới 1 BO khác
   refBO   DataType? @relation("FieldRefBO", fields: [refBOId], references: [id])
   refBOId Int?
 }

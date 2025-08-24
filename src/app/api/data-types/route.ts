@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/../backend/prisma"
+import { generateTypeForBO } from "@/services/gen-type.service"
 
 type FieldInput = {
   name: string
@@ -19,7 +20,6 @@ export async function POST(req: Request) {
   try {
     const body = await req.json() as { name: string; fields: FieldInput[] }
 
-    // kiểm tra name có bị trùng không
     const existing = await prisma.dataType.findUnique({
       where: { name: body.name },
     })
@@ -30,17 +30,14 @@ export async function POST(req: Request) {
       )
     }
 
-    // lấy danh sách BO hiện có để map refBOId
-    const allBOs: { id: number; name: string }[] = await prisma.dataType.findMany({
-      select: { id: true, name: true },
-    })
+    const allBOs = await prisma.dataType.findMany({ select: { id: true, name: true } })
 
     const newBO = await prisma.dataType.create({
       data: {
         name: body.name,
         fields: {
           create: body.fields.map((f: FieldInput) => {
-            const ref = allBOs.find((bo: { id: number; name: string }) => bo.name === f.type)
+            const ref = allBOs.find(bo => bo.name === f.type)
             return {
               name: f.name,
               type: f.type,
@@ -53,7 +50,10 @@ export async function POST(req: Request) {
       include: { fields: true },
     })
 
-    return NextResponse.json(newBO)
+    // 👉 generate type file và lưu path vào DB
+    const filePath = await generateTypeForBO(newBO.id)
+
+    return NextResponse.json({ ...newBO, tsFilePath: filePath })
   } catch (err) {
     console.error("POST /api/data-types error:", err)
     return NextResponse.json({ error: "Failed to create DataType" }, { status: 500 })

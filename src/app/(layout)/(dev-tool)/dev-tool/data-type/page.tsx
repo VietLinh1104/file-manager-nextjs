@@ -42,9 +42,7 @@ export default function DataTypeListPage() {
   const deleteBO = async (id: number) => {
     if (!confirm("Are you sure to delete this BO?")) return
     try {
-      const res = await fetch(`/api/data-types/${id}`, {
-        method: "DELETE",
-      })
+      const res = await fetch(`/api/data-types/${id}`, { method: "DELETE" })
       if (!res.ok) throw new Error("Delete failed")
       await fetchData()
     } catch (err) {
@@ -104,7 +102,13 @@ export default function DataTypeListPage() {
                   <td className="border p-2">
                     {new Date(bo.createdAt).toLocaleString()}
                   </td>
-                  <td className="border p-2">
+                  <td className="border p-2 flex gap-2">
+                    <Link
+                      href={`/dev-tool/data-type/${bo.id}`}
+                      className="px-3 py-1 bg-yellow-500 text-white rounded"
+                    >
+                      Edit
+                    </Link>
                     <button
                       onClick={() => deleteBO(bo.id)}
                       className="px-3 py-1 bg-red-600 text-white rounded"
