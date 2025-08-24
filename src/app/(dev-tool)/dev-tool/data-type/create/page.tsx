@@ -5,23 +5,25 @@ interface Field {
   name: string
   type: string
   required: boolean
+  isList: boolean
 }
 
 interface BO {
   id: number
   name: string
+  fields?: Field[]
 }
 
 export default function CreateDataType() {
   const [boName, setBoName] = React.useState("MyBO")
   const [fields, setFields] = React.useState<Field[]>([
-    { name: "User", type: "string", required: true },
+    { name: "User", type: "string", required: true, isList: false },
   ])
   const [selectedIndex, setSelectedIndex] = React.useState<number | null>(0)
   const [loading, setLoading] = React.useState(false)
   const [boList, setBoList] = React.useState<BO[]>([])
 
-  // Load danh sách BO có sẵn để cho phép chọn làm type
+  // load danh sách BO có sẵn
   React.useEffect(() => {
     const fetchBOs = async () => {
       try {
@@ -48,7 +50,10 @@ export default function CreateDataType() {
   }
 
   const addField = () => {
-    setFields([...fields, { name: "NewField", type: "string", required: false }])
+    setFields([
+      ...fields,
+      { name: "NewField", type: "string", required: false, isList: false },
+    ])
     setSelectedIndex(fields.length)
   }
 
@@ -59,7 +64,6 @@ export default function CreateDataType() {
     setSelectedIndex(null)
   }
 
-  // 👉 Save BO vào DB qua API route
   const saveBO = async () => {
     setLoading(true)
     try {
@@ -77,6 +81,21 @@ export default function CreateDataType() {
     } finally {
       setLoading(false)
     }
+  }
+
+  // hiển thị tree fields nếu type là BusinessObject
+  const renderSubFields = (boName: string) => {
+    const bo = boList.find(b => b.name === boName)
+    if (!bo?.fields) return null
+    return (
+      <ul className="ml-4 border-l pl-2 text-sm">
+        {bo.fields.map((f, i) => (
+          <li key={i}>
+            {f.name} ({f.type}) {f.isList ? "[]" : ""}
+          </li>
+        ))}
+      </ul>
+    )
   }
 
   return (
@@ -105,7 +124,8 @@ export default function CreateDataType() {
                   i === selectedIndex ? "bg-blue-100" : "hover:bg-gray-100"
                 }`}
               >
-                {f.name} ({f.type})
+                {f.name} ({f.type}) {f.isList ? "[]" : ""}
+                {boList.find(b => b.name === f.type) && renderSubFields(f.type)}
               </li>
             ))}
           </ul>
@@ -168,6 +188,15 @@ export default function CreateDataType() {
                   onChange={e => handleChange("required", e.target.checked)}
                 />
                 <label>Required</label>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={fields[selectedIndex].isList}
+                  onChange={e => handleChange("isList", e.target.checked)}
+                />
+                <label>List</label>
               </div>
 
               <div>
