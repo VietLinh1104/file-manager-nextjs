@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/../backend/prisma"
-import { deleteBOAndFile } from "@/services/delete-type.service"
-import { generateTypeForBO } from "@/services/gen-type.service"   // 👈 import
+import { deleteBOAndFile } from "@/services/dev-tool/type/delete-type.service"
+import { generateTypeForBO } from "@/services/dev-tool/type/gen-type.service"   // 👈 import
 
 
 type Params = { params: Promise<{ id: string }> }

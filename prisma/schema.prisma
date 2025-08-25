@@ -33,3 +33,15 @@ model Field {
   refBO   DataType? @relation("FieldRefBO", fields: [refBOId], references: [id])
   refBOId Int?
 }
+
+model ApiService {
+  id        Int      @id @default(autoincrement())
+  name      String   // Tên service, vd "Payment Service"
+  baseUrl   String   // Endpoint API, vd "/erp-1/payments"
+  method    String   // GET, POST, PUT, DELETE
+  dataType  String   // mapping với DataType (MyBO, Payment…)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tsFilePath String? // 👉 thêm field này để lưu đường dẫn file service được generate
+}

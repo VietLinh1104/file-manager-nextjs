@@ -1,6 +1,6 @@
 // src/components/dashboard/NavSection.tsx
 import NavList from "./NavList";
-import type { NavItem } from "@/types/nav";
+import type { NavItem } from "@/types/dev-tool/nav";
 
 type Props = {
   title: string;

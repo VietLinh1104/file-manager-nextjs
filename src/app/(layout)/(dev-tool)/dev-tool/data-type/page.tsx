@@ -1,6 +1,9 @@
 "use client"
 import * as React from "react"
 import Link from "next/link"
+import { ColumnDef } from "@tanstack/react-table"
+import { DataTable } from "@/components/ui/data-table"
+import { Button } from "@/components/ui/button"
 
 interface Field {
   id: number
@@ -19,14 +22,25 @@ interface DataType {
 export default function DataTypeListPage() {
   const [dataTypes, setDataTypes] = React.useState<DataType[]>([])
   const [loading, setLoading] = React.useState(false)
+  const [pageIndex, setPageIndex] = React.useState(0)
+  const [pageSize] = React.useState(10)
+  const [total, setTotal] = React.useState(0)
 
   // Load list BO
   const fetchData = async () => {
     setLoading(true)
     try {
-      const res = await fetch("/api/data-types")
-      const data = await res.json()
-      setDataTypes(data)
+      const res = await fetch(`/api/data-types?page=${pageIndex + 1}&pageSize=${pageSize}`)
+      const json = await res.json()
+      console.log("API /data-types response:", json)
+
+      if (Array.isArray(json)) {
+        setDataTypes(json)
+        setTotal(json.length)
+      } else {
+        setDataTypes(json.data ?? [])
+        setTotal(json.meta?.total ?? (json.data?.length ?? 0))
+      }
     } catch (err) {
       console.error("Failed to fetch data types:", err)
     } finally {
@@ -36,7 +50,7 @@ export default function DataTypeListPage() {
 
   React.useEffect(() => {
     fetchData()
-  }, [])
+  }, [pageIndex, pageSize])
 
   // Xóa BO
   const deleteBO = async (id: number) => {
@@ -51,76 +65,86 @@ export default function DataTypeListPage() {
     }
   }
 
+  // Định nghĩa column cho DataTable
+  const columns: ColumnDef<DataType, unknown>[] = [
+    {
+      accessorKey: "id",
+      header: "ID",
+    },
+    {
+      accessorKey: "name",
+      header: "Name",
+      cell: ({ row }) => (
+        <span className="font-semibold">{row.original.name}</span>
+      ),
+    },
+    {
+      accessorKey: "fields",
+      header: "Fields",
+      cell: ({ row }) => (
+        <div className="flex flex-wrap gap-1">
+          {row.original.fields.map(f => (
+            <span
+              key={f.id}
+              className="inline-block bg-gray-200 text-sm px-2 py-1 rounded"
+            >
+              {f.name}:{f.type}
+              {f.required ? "*" : ""}
+            </span>
+          ))}
+        </div>
+      ),
+    },
+    {
+      accessorKey: "createdAt",
+      header: "Created At",
+      cell: ({ row }) =>
+        new Date(row.original.createdAt).toLocaleString(),
+    },
+    {
+      id: "actions",
+      header: "Actions",
+      cell: ({ row }) => (
+        <div className="flex gap-2">
+          <Button asChild variant="secondary" size="sm">
+            <Link href={`/dev-tool/data-type/${row.original.id}`}>
+              Edit
+            </Link>
+          </Button>
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => deleteBO(row.original.id)}
+          >
+            Delete
+          </Button>
+        </div>
+      ),
+    },
+  ]
+
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-xl font-bold">Business Objects</h1>
-        <Link
-          href="/dev-tool/data-type/create"
-          className="px-4 py-2 bg-blue-600 text-white rounded"
-        >
-          + Create BO
-        </Link>
+        <Button asChild>
+          <Link href="/dev-tool/data-type/create">
+            + Create BO
+          </Link>
+        </Button>
       </div>
 
       {loading ? (
         <p>Loading...</p>
       ) : (
-        <table className="w-full border-collapse border border-gray-300">
-          <thead>
-            <tr className="bg-gray-100">
-              <th className="border p-2 text-left">ID</th>
-              <th className="border p-2 text-left">Name</th>
-              <th className="border p-2 text-left">Fields</th>
-              <th className="border p-2 text-left">Created At</th>
-              <th className="border p-2 text-left">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {dataTypes.length === 0 ? (
-              <tr>
-                <td colSpan={5} className="text-center p-4">
-                  No Business Objects found
-                </td>
-              </tr>
-            ) : (
-              dataTypes.map(bo => (
-                <tr key={bo.id}>
-                  <td className="border p-2">{bo.id}</td>
-                  <td className="border p-2 font-semibold">{bo.name}</td>
-                  <td className="border p-2">
-                    {bo.fields.map(f => (
-                      <span
-                        key={f.id}
-                        className="inline-block bg-gray-200 text-sm px-2 py-1 rounded mr-1"
-                      >
-                        {f.name}:{f.type}
-                        {f.required ? "*" : ""}
-                      </span>
-                    ))}
-                  </td>
-                  <td className="border p-2">
-                    {new Date(bo.createdAt).toLocaleString()}
-                  </td>
-                  <td className="border p-2 flex gap-2">
-                    <Link
-                      href={`/dev-tool/data-type/${bo.id}`}
-                      className="px-3 py-1 bg-yellow-500 text-white rounded"
-                    >
-                      Edit
-                    </Link>
-                    <button
-                      onClick={() => deleteBO(bo.id)}
-                      className="px-3 py-1 bg-red-600 text-white rounded"
-                    >
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+        <DataTable<DataType, unknown>
+          columns={columns}
+          data={dataTypes}
+          total={total}
+          pageSize={pageSize}
+          pageIndex={pageIndex}
+          onPageChange={setPageIndex}
+        />
       )}
     </div>
   )

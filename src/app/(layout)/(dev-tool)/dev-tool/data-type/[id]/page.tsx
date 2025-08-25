@@ -238,7 +238,7 @@ export default function EditDataTypePage() {
       {/* Save Button */}
       <div className="p-3 border-t flex justify-end gap-2">
         <button
-          onClick={() => router.push("/bo/data-type")}
+          onClick={() => router.push("/dev-tool/data-type")}
           className="px-4 py-2 bg-gray-300 rounded"
         >
           Cancel

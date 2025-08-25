@@ -4,7 +4,7 @@ import * as React from "react"
 import { columns, Payment } from "./columns"
 import { DataTable } from "@/components/ui/data-table"
 import DialogFile from "./dialog"
-import { getPayments } from "@/services/payment.service"
+import { getPayments } from "@/services/erp-1/payment.service"
 
 export default function DocumentListTableSection() {
   const [data, setData] = React.useState<Payment[]>([])

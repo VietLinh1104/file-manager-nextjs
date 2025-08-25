@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/../backend/prisma"
-import { generateTypeForBO } from "@/services/gen-type.service"
+import { generateTypeForBO } from "@/services/dev-tool/type/gen-type.service"
 
 type FieldInput = {
   name: string
@@ -15,6 +15,7 @@ export async function GET() {
   })
   return NextResponse.json(bos)
 }
+
 
 export async function POST(req: Request) {
   try {

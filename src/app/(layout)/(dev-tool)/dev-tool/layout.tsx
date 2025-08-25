@@ -3,7 +3,7 @@
 import React, { useState, PropsWithChildren, useMemo } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, X, Folder, Home, Upload, Settings, Search, ChevronDown } from "lucide-react";
+import { Menu, X,  Home,  Search, ChevronDown, Braces, Waypoints, LayoutList  } from "lucide-react";
 import { Breadcrumb, NavSection, NavList } from "@/components/dashboard";
 
 /**
@@ -18,14 +18,14 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
 
   // Define primary nav here (you can extend from your CMS or constants later)
   const nav = useMemo(
-    () => [
-      { href: "/", label: "Tổng quan", icon: Home },
-      { href: "/erp-1/data-table", label: "Documents List", icon: Folder },
-      { href: "/uploads", label: "Upload", icon: Upload },
-      { href: "/settings", label: "Cài đặt", icon: Settings },
-    ],
-    []
-  );
+      () => [
+        { href: "/erp-1", label: "Tổng quan", icon: Home },
+        { href: "/dev-tool/data-type", label: "Data Type", icon: Braces },
+        { href: "/dev-tool/api-service", label: "API Service", icon: Waypoints },
+        { href: "/dev-tool/table-gen", label: "Table Data Gen", icon: LayoutList },
+      ],
+      []
+    );
 
   return (
     <div className="min-h-dvh bg-background text-foreground">
