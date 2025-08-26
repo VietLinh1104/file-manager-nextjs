@@ -1,3 +1,4 @@
+// src\services\dev-tool\type\delete-type.service.ts
 import { unlinkSync, existsSync } from "fs"
 import { join } from "path"
 import { prisma } from "@/../backend/prisma"

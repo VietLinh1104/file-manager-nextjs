@@ -25,10 +25,34 @@ export async function GET(_: Request, { params }: Params) {
 }
 
 // Cập nhật BO
+import { unlinkSync, existsSync } from "fs"
+import { join } from "path"
+
+// Cập nhật BO
 export async function PUT(req: Request, { params }: Params) {
   const { id } = await params
   const body = (await req.json()) as { name: string; fields: FieldInput[] }
 
+  // lấy BO cũ để biết filePath
+  const oldBO = await prisma.dataType.findUnique({
+    where: { id: Number(id) },
+    select: { tsFilePath: true, name: true },
+  })
+
+  // xóa file cũ nếu có
+  if (oldBO?.tsFilePath) {
+    const absPath = join(process.cwd(), "src", oldBO.tsFilePath)
+    if (existsSync(absPath)) {
+      try {
+        unlinkSync(absPath)
+        console.log(`✅ Deleted old file: ${absPath}`)
+      } catch (err) {
+        console.error(`❌ Failed to delete old file ${absPath}:`, err)
+      }
+    }
+  }
+
+  // update BO trong DB
   const updated = await prisma.dataType.update({
     where: { id: Number(id) },
     data: {
@@ -46,11 +70,12 @@ export async function PUT(req: Request, { params }: Params) {
     include: { fields: true },
   })
 
-  // 👇 generate lại type file sau khi update DB
+  // generate file mới
   await generateTypeForBO(Number(id))
 
   return NextResponse.json(updated)
 }
+
 
 
 // Xoá BO

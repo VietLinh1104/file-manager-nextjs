@@ -16,16 +16,18 @@ model DataType {
   // Các field từ BO khác tham chiếu tới BO này
   referencedBy Field[] @relation("FieldRefBO")
 
-  tsFilePath  String?   // đường dẫn file type đã generate
-}
+  tsFilePath String? // đường dẫn file type đã generate
 
+  // 👇 quan hệ ngược với View
+  views View[]
+}
 
 model Field {
   id       Int     @id @default(autoincrement())
   name     String
   type     String
   required Boolean
-  isList   Boolean @default(false)   // 👈 thêm dòng này
+  isList   Boolean @default(false)
 
   dataType   DataType @relation(fields: [dataTypeId], references: [id], onDelete: Cascade)
   dataTypeId Int
@@ -36,12 +38,32 @@ model Field {
 
 model ApiService {
   id        Int      @id @default(autoincrement())
-  name      String   // Tên service, vd "Payment Service"
-  baseUrl   String   // Endpoint API, vd "/erp-1/payments"
-  method    String   // GET, POST, PUT, DELETE
-  dataType  String   // mapping với DataType (MyBO, Payment…)
+  name      String // Tên service, vd "Payment Service"
+  baseUrl   String // Endpoint API, vd "/erp-1/payments"
+  method    String // GET, POST, PUT, DELETE
+  dataType  String // mapping với DataType (MyBO, Payment…)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  tsFilePath String? // 👉 thêm field này để lưu đường dẫn file service được generate
+  tsFilePath String? // 👉 lưu đường dẫn file service đã generate
+
+  // 👇 quan hệ ngược với View
+  views View[]
+}
+
+model View {
+  id   Int    @id @default(autoincrement())
+  name String @unique // Tên view, vd "Customer List"
+  type String // "table" | "input"
+
+  apiId Int
+  api   ApiService @relation(fields: [apiId], references: [id], onDelete: Cascade)
+
+  dataTypeId Int
+  dataType   DataType @relation(fields: [dataTypeId], references: [id], onDelete: Cascade)
+
+  path      String // path của view: vd "/dev-tool/gen-view/customer-list"
+  config    Json // cấu hình mapping field <-> column/input
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

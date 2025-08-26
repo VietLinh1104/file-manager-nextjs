@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import Link from "next/link"
 import {
   ColumnDef,
   flexRender,
@@ -16,9 +17,39 @@ import {
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
-import { MoreHorizontal, ArrowUp, ArrowDown } from "lucide-react"
+import {
+  MoreHorizontal, ArrowUp, ArrowDown,
+  ChevronRight, ChevronLeft, Search as SearchIcon, X as ClearIcon
+} from "lucide-react"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Input } from "@/components/ui/input"
 
-interface DataTableProps<TData, TValue> {
+// 👇 TData phải có id để map link/hành động
+interface HasId {
+  id: string | number
+}
+
+export interface ActionItem<TData extends HasId> {
+  label: string
+  onClick?: (row: TData) => void
+  href?: string
+  variant?: "default" | "destructive"
+}
+
+export interface ToolbarAction {
+  label: string
+  href?: string
+  icon?: React.ReactNode
+  variant?: "default" | "secondary" | "destructive"
+  onClick?: () => void
+}
+
+export interface DataTableProps<TData extends HasId, TValue> {
   columns: ColumnDef<TData, TValue>[]
   data: TData[]
   total: number
@@ -26,10 +57,15 @@ interface DataTableProps<TData, TValue> {
   pageIndex: number
   onPageChange: (page: number) => void
   withCheckbox?: boolean
-  withMoreButton?: boolean
+  actions?: ActionItem<TData>[]
+  // search + actions
+  searchValue: string
+  onSearchChange: (value: string) => void
+  toolbarActions?: ToolbarAction[]
+  onSelectionChange?: (rows: TData[]) => void
 }
 
-export function DataTable<TData, TValue>({
+export function DataTable<TData extends HasId, TValue>({
   columns,
   data,
   total,
@@ -37,7 +73,11 @@ export function DataTable<TData, TValue>({
   pageIndex,
   onPageChange,
   withCheckbox = false,
-  withMoreButton = false,
+  actions = [],
+  searchValue,
+  onSearchChange,
+  toolbarActions = [],
+  onSelectionChange,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([])
 
@@ -52,8 +92,61 @@ export function DataTable<TData, TValue>({
     getSortedRowModel: getSortedRowModel(),
   })
 
+  // thông báo selection ra ngoài
+  React.useEffect(() => {
+    onSelectionChange?.(
+      table.getSelectedRowModel().rows.map((r) => r.original)
+    )
+  }, [table.getSelectedRowModel().rows, onSelectionChange])
+
   return (
     <div className="space-y-4">
+      {/* 🔎 Search + Actions */}
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="relative flex-1 max-w-xl">
+          <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 opacity-70 pointer-events-none" />
+          <Input
+            placeholder="Search by name…"
+            value={searchValue}
+            onChange={(e) => onSearchChange(e.target.value)}
+            className="pl-9"
+          />
+          {searchValue && (
+            <button
+              type="button"
+              aria-label="Clear search"
+              onClick={() => onSearchChange("")}
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 opacity-70 hover:opacity-100"
+            >
+              <ClearIcon className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+
+        <div className="flex gap-2">
+          {toolbarActions.map((act, idx) =>
+            act.href ? (
+              <Button key={idx} asChild variant={act.variant ?? "default"}>
+                <Link href={act.href}>
+                  {act.label}
+                  {act.icon && <span className="ml-2">{act.icon}</span>}
+                </Link>
+              </Button>
+            ) : (
+              <Button
+                key={idx}
+                onClick={act.onClick}
+                variant={act.variant ?? "default"}
+              >
+                {act.label}
+                {act.icon && <span className="ml-2">{act.icon}</span>}
+              </Button>
+            )
+          )}
+        </div>
+      </div>
+
+      {/* Table */}
       <div className="overflow-hidden rounded-md border">
         <Table>
           <TableHeader>
@@ -66,6 +159,7 @@ export function DataTable<TData, TValue>({
                       onCheckedChange={(value) =>
                         table.toggleAllPageRowsSelected(!!value)
                       }
+                      aria-label="Select all rows"
                     />
                   </TableHead>
                 )}
@@ -86,12 +180,13 @@ export function DataTable<TData, TValue>({
                     </div>
                   </TableHead>
                 ))}
-                {withMoreButton && <TableHead className="w-10">Actions</TableHead>}
+                {actions.length > 0 && <TableHead className="w-10">Actions</TableHead>}
               </TableRow>
             ))}
           </TableHeader>
+
           <TableBody>
-            {table.getRowModel().rows?.length ? (
+            {table.getRowModel().rows.length ? (
               table.getRowModel().rows.map((row) => (
                 <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
                   {withCheckbox && (
@@ -99,19 +194,51 @@ export function DataTable<TData, TValue>({
                       <Checkbox
                         checked={row.getIsSelected()}
                         onCheckedChange={(value) => row.toggleSelected(!!value)}
+                        aria-label="Select row"
                       />
                     </TableCell>
                   )}
+
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </TableCell>
                   ))}
-                  {withMoreButton && (
-                    <TableCell>
-                      <Button variant="ghost" size="sm">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
+
+                  {actions.length > 0 && (
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm" aria-label="Row actions">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          {actions.map((action, idx) => {
+                            const variantCls =
+                              action.variant === "destructive" ? "text-red-600" : ""
+                            if (action.href) {
+                              const href = action.href.replace(":id", String(row.original.id))
+                              return (
+                                <DropdownMenuItem key={idx} asChild>
+                                  <Link href={href} className={variantCls}>
+                                    {action.label}
+                                  </Link>
+                                </DropdownMenuItem>
+                              )
+                            }
+                            return (
+                              <DropdownMenuItem
+                                key={idx}
+                                onClick={() => action.onClick?.(row.original)}
+                                className={variantCls}
+                              >
+                                {action.label}
+                              </DropdownMenuItem>
+                            )
+                          })}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
                   )}
                 </TableRow>
@@ -119,7 +246,7 @@ export function DataTable<TData, TValue>({
             ) : (
               <TableRow>
                 <TableCell
-                  colSpan={columns.length + (withCheckbox ? 1 : 0) + (withMoreButton ? 1 : 0)}
+                  colSpan={columns.length + (withCheckbox ? 1 : 0) + (actions.length > 0 ? 1 : 0)}
                   className="h-24 text-center"
                 >
                   No results.
@@ -142,7 +269,7 @@ export function DataTable<TData, TValue>({
             onClick={() => onPageChange(pageIndex - 1)}
             disabled={pageIndex <= 0}
           >
-            Previous
+            <ChevronLeft />
           </Button>
           <Button
             variant="outline"
@@ -150,7 +277,7 @@ export function DataTable<TData, TValue>({
             onClick={() => onPageChange(pageIndex + 1)}
             disabled={pageIndex + 1 >= table.getPageCount()}
           >
-            Next
+            <ChevronRight />
           </Button>
         </div>
       </div>

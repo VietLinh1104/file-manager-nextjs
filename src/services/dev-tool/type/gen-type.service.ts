@@ -1,3 +1,4 @@
+// src\services\dev-tool\type\gen-type.service.ts
 import { writeFileSync, mkdirSync, existsSync } from "fs"
 import { join } from "path"
 import { prisma } from "@/../backend/prisma"
