@@ -60,7 +60,7 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
           {/* User menu (simple) */}
           <button className="ml-auto inline-flex items-center gap-2 rounded-xl border px-2 py-1.5 md:ml-3">
             <div className="grid h-6 w-6 place-items-center rounded-full bg-muted text-[10px]">VL</div>
-            <span className="hidden text-sm md:inline">Linh</span>
+            <span className="hidden text-sm md:inline">Viet Linh</span>
             <ChevronDown className="hidden h-4 w-4 opacity-60 md:inline" />
           </button>
         </div>
@@ -74,6 +74,7 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
 
             <div className="mt-auto pt-3 text-xs opacity-60">
               <p>v0.1.0</p>
+              <p>ERP System Builder by VIETLINH</p>
             </div>
           </div>
         </aside>
