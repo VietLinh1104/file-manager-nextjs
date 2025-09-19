@@ -3,7 +3,7 @@
 import React, { useState, PropsWithChildren, useMemo } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, X,  Home,  Search, ChevronDown, Braces, Waypoints, PanelsTopLeft   } from "lucide-react";
+import { Menu, X,  Home,  Search, ChevronDown, Braces, Waypoints   } from "lucide-react";
 import { Breadcrumb, NavSection, NavList } from "@/components/dashboard";
 
 /**
@@ -21,8 +21,7 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
       () => [
         { href: "/erp-1", label: "Tổng quan", icon: Home },
         { href: "/dev-tool/data-type", label: "Data Type", icon: Braces },
-        { href: "/dev-tool/api-service", label: "API Service", icon: Waypoints },
-        { href: "/dev-tool/gen-view", label: "View", icon: PanelsTopLeft },
+        { href: "/dev-tool/api-service", label: "API Service", icon: Waypoints }      
       ],
       []
     );

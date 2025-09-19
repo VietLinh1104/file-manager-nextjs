@@ -40,59 +40,74 @@ export function generateApiServiceFile(
 ): string {
   const filePath = getFilePath(service.name)
 
-  // collect BO types used
-  const usedTypes = new Set<string>()
-  service.methods.forEach((m) => {
-    if (!isPrimitive(m.returnType)) usedTypes.add(m.returnType)
-    m.params.forEach((p) => {
-      if (!isPrimitive(p.type)) usedTypes.add(p.type)
-    })
-  })
+  // lấy default BO
+  const defaultType = service.methods[0]?.returnType || "unknown"
 
-  // generate imports
-  const importStatements = Array.from(usedTypes)
-    .map((t) => {
-      const dt = allDataTypes.find((d) => d.name === t)
-      if (dt?.tsFilePath) {
-        const relativeTypePath =
-          "@/".concat(
-            relative(
-              join(process.cwd(), "src"),
-              join(process.cwd(), "src", dt.tsFilePath.replace(/^\//, ""))
-            )
-              .replace(/\\/g, "/")
-              .replace(/\.ts$/, "")
-          )
-        return `import { ${t} } from "${relativeTypePath}"`
-      }
-      return null
-    })
-    .filter(Boolean)
-    .join("\n")
+  const dt = allDataTypes.find((d) => d.name === defaultType)
+  let importTypeLine = ""
+  if (dt?.tsFilePath) {
+    const relativeTypePath =
+      "@/".concat(
+        relative(
+          join(process.cwd(), "src"),
+          join(process.cwd(), "src", dt.tsFilePath.replace(/^\//, ""))
+        )
+          .replace(/\\/g, "/")
+          .replace(/\.ts$/, "")
+      )
+    importTypeLine = `import { ${defaultType} } from "${relativeTypePath}"`
+  }
 
-  const methodsCode = service.methods
-    .map((m) => {
-      const params = (m.params ?? [])
-        .map((p) => `${p.name}: ${mapType(p.type, p.isList)}`)
-        .join(", ")
-      const returnType = mapType(m.returnType, m.isList)
+  // base CrudService
+  let fileContent = `// Auto-generated API service for ${service.name}
+import { CrudService } from "@/services/dev-tool/api/crud.service"
+${importTypeLine}
 
-      return `  async ${m.name}(${params}): Promise<${returnType}> {
-    return api.${httpVerb(m.name)}<${returnType}>(\`${service.baseUrl}\`)
+export const ${service.name.toLowerCase()}Service = new CrudService<${defaultType}>("${service.baseUrl}")
+`
+
+  // check có method custom ngoài CRUD
+  const customMethods = service.methods.filter(
+    (m) =>
+      !["getall", "getbyid", "create", "update", "updatebyid", "delete"].includes(
+        m.name.toLowerCase()
+      )
+  )
+
+  if (customMethods.length > 0) {
+    const extraMethods = customMethods
+      .map((m) => {
+        const params = (m.params ?? [])
+          .map((p) => `${p.name}: ${mapType(p.type, p.isList)}`)
+          .join(", ")
+
+        const returnType = mapType(m.returnType, m.isList)
+
+        // build query params để tránh unused var
+        const paramObj =
+          (m.params?.length ?? 0) > 0 ? `{ params: { ${m.params.map((p) => p.name).join(", ")} } }` : "{}"
+
+        return `  async ${m.name}(${params}): Promise<AxiosResponse<${returnType}>> {
+    return api.${httpVerb(m.name)}<${returnType}>(\`${service.baseUrl}/${m.name}\`, ${paramObj})
   }`
-    })
-    .join("\n\n")
+      })
+      .join("\n\n")
 
-  const fileContent = `// Auto-generated API service for ${service.name}
+    fileContent += `
+
+// Extra custom methods
 import api from "@/lib/axios"
-${importStatements ? "\n" + importStatements + "\n" : ""}
+import { AxiosResponse } from "axios"
 
-export class ${service.name}Service {
-${methodsCode}
+export class ${capitalize(service.name)}ExtraService extends CrudService<${defaultType}> {
+${extraMethods}
 }
 
-export const ${service.name.toLowerCase()}Service = new ${service.name}Service()
+export const ${service.name.toLowerCase()}ExtraService = new ${capitalize(
+      service.name
+    )}ExtraService("${service.baseUrl}")
 `
+  }
 
   writeFileSync(filePath, fileContent, { encoding: "utf-8" })
 
@@ -135,8 +150,12 @@ function mapType(type: string, isList: boolean): string {
 function httpVerb(methodName: string): string {
   const lower = methodName.toLowerCase()
   if (lower.startsWith("get")) return "get"
-  if (lower.startsWith("create")) return "post"
+  if (lower.startsWith("create") || lower.startsWith("add")) return "post"
   if (lower.startsWith("update")) return "put"
-  if (lower.startsWith("delete")) return "delete"
+  if (lower.startsWith("delete") || lower.startsWith("remove")) return "delete"
   return "get"
+}
+
+function capitalize(str: string): string {
+  return str.charAt(0).toUpperCase() + str.slice(1)
 }
