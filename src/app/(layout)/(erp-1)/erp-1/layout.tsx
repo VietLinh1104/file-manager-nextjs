@@ -43,8 +43,8 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
 
           {/* Brand */}
           <Link href="/" className="flex items-center gap-2 hover:opacity-90">
-            <div className="grid h-8 w-8 place-items-center rounded-xl border text-xs font-semibold">FM</div>
-            <span className="hidden text-sm font-semibold sm:inline">File Manager Admin</span>
+            <div className="grid h-8 w-8 place-items-center rounded-xl border text-xs font-semibold">EF</div>
+            <span className="hidden text-sm font-semibold sm:inline">Enterprise Financial Management System </span>
           </Link>
 
           {/* Search */}
@@ -74,6 +74,7 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
 
             <div className="mt-auto pt-3 text-xs opacity-60">
               <p>v0.1.0</p>
+              <p>ERP System Builder by VIETLINH</p>
             </div>
           </div>
         </aside>
