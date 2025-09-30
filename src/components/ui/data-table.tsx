@@ -1,5 +1,4 @@
 "use client"
-
 import * as React from "react"
 import Link from "next/link"
 import {
@@ -12,14 +11,23 @@ import {
 } from "@tanstack/react-table"
 
 import {
-  Table, TableBody, TableCell, TableHead,
-  TableHeader, TableRow
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
-  MoreHorizontal, ArrowUp, ArrowDown,
-  ChevronRight, ChevronLeft, Search as SearchIcon, X as ClearIcon
+  MoreHorizontal,
+  ArrowUp,
+  ArrowDown,
+  ChevronRight,
+  ChevronLeft,
+  Search as SearchIcon,
+  X as ClearIcon,
 } from "lucide-react"
 import {
   DropdownMenu,
@@ -81,8 +89,19 @@ export function DataTable<TData extends HasId, TValue>({
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([])
 
+  // 🔎 lọc client-side theo searchValue
+  const filteredData = React.useMemo(() => {
+    if (!searchValue) return data
+    const lower = searchValue.toLowerCase()
+    return data.filter((row) =>
+      Object.values(row).some((val) =>
+        String(val).toLowerCase().includes(lower)
+      )
+    )
+  }, [data, searchValue])
+
   const table = useReactTable({
-    data,
+    data: filteredData,
     columns,
     state: { sorting, pagination: { pageIndex, pageSize } },
     onSortingChange: setSorting,
@@ -106,7 +125,7 @@ export function DataTable<TData extends HasId, TValue>({
         <div className="relative flex-1 max-w-xl">
           <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 opacity-70 pointer-events-none" />
           <Input
-            placeholder="Search by name…"
+            placeholder="Search…"
             value={searchValue}
             onChange={(e) => onSearchChange(e.target.value)}
             className="pl-9"
@@ -170,7 +189,10 @@ export function DataTable<TData extends HasId, TValue>({
                     className="cursor-pointer select-none"
                   >
                     <div className="flex items-center">
-                      {flexRender(header.column.columnDef.header, header.getContext())}
+                      {flexRender(
+                        header.column.columnDef.header,
+                        header.getContext()
+                      )}
                       {header.column.getIsSorted() === "asc" && (
                         <ArrowUp className="ml-1 h-4 w-4 text-muted-foreground" />
                       )}
@@ -180,7 +202,9 @@ export function DataTable<TData extends HasId, TValue>({
                     </div>
                   </TableHead>
                 ))}
-                {actions.length > 0 && <TableHead className="w-10">Actions</TableHead>}
+                {actions.length > 0 && (
+                  <TableHead className="w-10">Actions</TableHead>
+                )}
               </TableRow>
             ))}
           </TableHeader>
@@ -188,12 +212,17 @@ export function DataTable<TData extends HasId, TValue>({
           <TableBody>
             {table.getRowModel().rows.length ? (
               table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
+                <TableRow
+                  key={row.id}
+                  data-state={row.getIsSelected() && "selected"}
+                >
                   {withCheckbox && (
                     <TableCell>
                       <Checkbox
                         checked={row.getIsSelected()}
-                        onCheckedChange={(value) => row.toggleSelected(!!value)}
+                        onCheckedChange={(value) =>
+                          row.toggleSelected(!!value)
+                        }
                         aria-label="Select row"
                       />
                     </TableCell>
@@ -209,16 +238,25 @@ export function DataTable<TData extends HasId, TValue>({
                     <TableCell className="text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm" aria-label="Row actions">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            aria-label="Row actions"
+                          >
                             <MoreHorizontal className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           {actions.map((action, idx) => {
                             const variantCls =
-                              action.variant === "destructive" ? "text-red-600" : ""
+                              action.variant === "destructive"
+                                ? "text-red-600"
+                                : ""
                             if (action.href) {
-                              const href = action.href.replace(":id", String(row.original.id))
+                              const href = action.href.replace(
+                                ":id",
+                                String(row.original.id)
+                              )
                               return (
                                 <DropdownMenuItem key={idx} asChild>
                                   <Link href={href} className={variantCls}>
@@ -246,7 +284,11 @@ export function DataTable<TData extends HasId, TValue>({
             ) : (
               <TableRow>
                 <TableCell
-                  colSpan={columns.length + (withCheckbox ? 1 : 0) + (actions.length > 0 ? 1 : 0)}
+                  colSpan={
+                    columns.length +
+                    (withCheckbox ? 1 : 0) +
+                    (actions.length > 0 ? 1 : 0)
+                  }
                   className="h-24 text-center"
                 >
                   No results.

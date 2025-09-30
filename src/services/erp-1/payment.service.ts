@@ -7,7 +7,7 @@ export async function getPayments<T>(
   page = 1,
   pageSize = 5
 ): Promise<AxiosResponse<DataResponse<T>>> {
-  return api.get<DataResponse<T>>("/erp-1/payments", {
+  return api.get<DataResponse<T>>("/api/erp-1/payments", {
     params: { page, pageSize },
   })
 }

@@ -10,6 +10,7 @@ export async function GET() {
       .map((f) => f.replace(".ts", ""))
 
     return NextResponse.json(files)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 })
   }

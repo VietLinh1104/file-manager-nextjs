@@ -6,6 +6,7 @@ import { DataTable } from "@/components/ui/data-table"
 import { ColumnDef } from "@tanstack/react-table"
 import { Trash, Plus } from "lucide-react"
 import { columns, Payment } from "./columns"
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import DialogFile from "./dialog"
 import { getPayments } from "@/services/erp-1/payment.service"
 
