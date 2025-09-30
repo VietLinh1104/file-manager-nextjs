@@ -7,21 +7,21 @@ import type { File } from "@/types/erp-1/File"
 
 export default function GeneratedFormPage() {
 	const fields: Field[] = useMemo(() => [
-  {
-    "id": "checkbox-1759227862702",
-    "label": "Checkbox Input",
-    "placeholder": "",
-    "type": "checkbox",
-    "colSpan": 1
-  }
-], [])
+        {
+            "id": "checkbox-file",
+            "label": "Checkbox Input",
+            "placeholder": "",
+            "type": "checkbox",
+            "colSpan": 1
+        }
+    ], [])
 
 	const handleSubmit = (formData: FormData) => {
         const file: File = {
-        checkbox: formData.get("checkbox-1759227862702") !== null
-    }
+            checkbox: formData.get("checkbox-file") !== null
+        }
 
-	console.log("Submitted objects:", { file })
+        console.log("Submitted objects:", { file })
 	}
 
 	return (
