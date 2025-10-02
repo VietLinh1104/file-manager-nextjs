@@ -85,7 +85,7 @@ export default function FormBuilderPage() {
       .then(setBos)
   }, [])
 
-  // thêm field khi drag
+  // ========================== Handle Drag ==========================
   function handleDragEnd(event: DragEndEvent) {
     if (event.over?.id === "form-canvas") {
       const id = event.active.id as string
@@ -133,7 +133,7 @@ export default function FormBuilderPage() {
     if (selectedFieldId === internalKey) setSelectedFieldId(null)
   }
 
-  // ========================== Generate Code ==========================
+  // ========================== Generate Code (NEW) ==========================
   function generateCode() {
     const ids = formFields.map((f) => f.id)
     const duplicate = ids.find((id, i) => ids.indexOf(id) !== i)
@@ -142,7 +142,6 @@ export default function FormBuilderPage() {
       return
     }
 
-    // nhóm theo BO
     const boFieldMap: Record<number, FormField[]> = {}
     formFields.forEach((f) => {
       if (f.boId) {
@@ -184,25 +183,38 @@ ${bo.fields
       const dt = bound.dataType || "string"
       if (bound.uiType === "checkbox") {
         if (bound.options && bound.options.length > 0) {
-          return ` ${boF.name}: formData.getAll("${bound.id}") as string[]`
+          return ` ${boF.name}: values["${bound.id}"] as string[]`
         }
-        return ` ${boF.name}: formData.get("${bound.id}") !== null`
+        return ` ${boF.name}: values["${bound.id}"] as boolean`
       }
       if (dt === "number") {
-        return ` ${boF.name}: Number(formData.get("${bound.id}")) || 0`
+        return ` ${boF.name}: Number(values["${bound.id}"]) || 0`
       }
       if (dt === "Date") {
-        return ` ${boF.name}: (() => {
-  const val = formData.get("${bound.id}") as string | null
-  return val ? new Date(val) : undefined
-})()`
+        return ` ${boF.name}: values["${bound.id}"] as Date | undefined`
       }
-      return ` ${boF.name}: formData.get("${bound.id}") as ${dt}`
+      if (dt === "File") {
+        return ` ${boF.name}: values["${bound.id}"] as File`
+      }
+      return ` ${boF.name}: values["${bound.id}"] as string`
     }
+
+    // nếu chưa bind
     if (boF.required) {
-      return ` ${boF.name}: null`
+      switch (boF.type) {
+        case "number":
+          return ` ${boF.name}: 0`
+        case "boolean":
+          return ` ${boF.name}: false`
+        case "Date":
+          return ` ${boF.name}: new Date()`
+        case "File":
+          return ` ${boF.name}: null as unknown as File`
+        default:
+          return ` ${boF.name}: ""`
+      }
     }
-    return ""
+    return ` ${boF.name}: undefined`
   })
   .filter(Boolean)
   .join(",\n")}
@@ -220,7 +232,7 @@ ${imports}
 export default function GeneratedFormPage() {
   const fields: Field[] = useMemo(() => ${fieldsCode}, [])
 
-  const handleSubmit = (formData: FormData) => {
+  const handleSubmit = (values: Record<string, unknown>) => {
 ${objects}
 
     console.log("Submitted objects:", { ${usedBOs.map((bo) => bo.name.toLowerCase()).join(", ")} })
