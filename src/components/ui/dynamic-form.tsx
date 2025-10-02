@@ -117,7 +117,7 @@ export function DynamicForm({ title, description, fields, onSubmit }: DynamicFor
                         onValueChange={rhfField.onChange}
                         defaultValue={String(rhfField.value || "")}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger className="w-full">
                           <SelectValue placeholder={field.placeholder || "Chọn..."} />
                         </SelectTrigger>
                         <SelectContent>
@@ -128,6 +128,7 @@ export function DynamicForm({ title, description, fields, onSubmit }: DynamicFor
                           ))}
                         </SelectContent>
                       </Select>
+
                     ) : field.type === "radio" ? (
                       <RadioGroup
                         onValueChange={rhfField.onChange}
