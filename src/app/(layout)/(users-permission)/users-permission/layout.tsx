@@ -26,8 +26,8 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
   const nav = useMemo(
     () => [
       { href: "/erp-1", label: "Tổng quan", icon: Home },
-      { href: "/erp-1/data-table", label: "Data Table", icon: Folder },
-      { href: "/erp-1/data-table2", label: "Data Table 2", icon: Upload },    ],
+      { href: "/users-permission/invite-member", label: "Invite New User", icon: Upload },
+    ],
     []
   );
 

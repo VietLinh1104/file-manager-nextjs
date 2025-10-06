@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button"
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
-import { Checkbox } from "@/components/ui/checkbox"
 import { Trash, Copy } from "lucide-react"
 import {
   Dialog,
@@ -33,9 +32,6 @@ interface FormField {
   uiType: string
   label: string
   placeholder?: string
-  defaultValue?: string
-  required?: boolean
-  disabled?: boolean
   boundTo?: string
   options?: { value: string; name: string }[]
   dataType?: "string" | "number" | "boolean" | "File" | "Date"
@@ -102,9 +98,6 @@ export default function FormBuilderPage() {
           uiType: type,
           label: `${type.charAt(0).toUpperCase() + type.slice(1)} Input`,
           placeholder: "",
-          required: false,
-          disabled: false,
-          defaultValue: "",
           options:
             type === "select" || type === "radio"
               ? [
@@ -140,7 +133,7 @@ export default function FormBuilderPage() {
     if (selectedFieldId === internalKey) setSelectedFieldId(null)
   }
 
-  // ========================== Generate Code ==========================
+  // ========================== Generate Code (NEW) ==========================
   function generateCode() {
     const ids = formFields.map((f) => f.id)
     const duplicate = ids.find((id, i) => ids.indexOf(id) !== i)
@@ -172,9 +165,6 @@ export default function FormBuilderPage() {
         label: f.label,
         placeholder: f.placeholder,
         type: f.uiType,
-        required: f.required,
-        disabled: f.disabled,
-        defaultValue: f.defaultValue,
         colSpan: 1,
         ...(f.options ? { options: f.options } : {}),
       })),
@@ -197,13 +187,36 @@ ${bo.fields
         }
         return ` ${boF.name}: values["${bound.id}"] as boolean`
       }
-      if (dt === "number") return ` ${boF.name}: Number(values["${bound.id}"]) || 0`
-      if (dt === "Date") return ` ${boF.name}: values["${bound.id}"] as Date | undefined`
-      if (dt === "File") return ` ${boF.name}: values["${bound.id}"] as File`
+      if (dt === "number") {
+        return ` ${boF.name}: Number(values["${bound.id}"]) || 0`
+      }
+      if (dt === "Date") {
+        return ` ${boF.name}: values["${bound.id}"] as Date | undefined`
+      }
+      if (dt === "File") {
+        return ` ${boF.name}: values["${bound.id}"] as File`
+      }
       return ` ${boF.name}: values["${bound.id}"] as string`
     }
-    return boF.required ? ` ${boF.name}: ""` : ` ${boF.name}: undefined`
+
+    // nếu chưa bind
+    if (boF.required) {
+      switch (boF.type) {
+        case "number":
+          return ` ${boF.name}: 0`
+        case "boolean":
+          return ` ${boF.name}: false`
+        case "Date":
+          return ` ${boF.name}: new Date()`
+        case "File":
+          return ` ${boF.name}: null as unknown as File`
+        default:
+          return ` ${boF.name}: ""`
+      }
+    }
+    return ` ${boF.name}: undefined`
   })
+  .filter(Boolean)
   .join(",\n")}
 }`
       })
@@ -221,6 +234,7 @@ export default function GeneratedFormPage() {
 
   const handleSubmit = (values: Record<string, unknown>) => {
 ${objects}
+
     console.log("Submitted objects:", { ${usedBOs.map((bo) => bo.name.toLowerCase()).join(", ")} })
   }
 
@@ -235,6 +249,7 @@ ${objects}
     </div>
   )
 }`
+
     setGeneratedCode(code)
     setShowDialog(true)
   }
@@ -243,6 +258,7 @@ ${objects}
     navigator.clipboard.writeText(generatedCode)
   }
 
+  // ========================== Render ==========================
   const selectedField = formFields.find((f) => f.internalKey === selectedFieldId)
 
   return (
@@ -267,8 +283,6 @@ ${objects}
                   <div className="flex-1">
                     <label className="block text-xs font-medium mb-1">{f.label}</label>
                     {f.uiType === "text" && <Input disabled placeholder={f.placeholder} />}
-                    {f.uiType === "email" && <Input type="email" disabled placeholder={f.placeholder} />}
-                    {f.uiType === "password" && <Input type="password" disabled placeholder={f.placeholder} />}
                     {f.uiType === "number" && <Input type="number" disabled placeholder={f.placeholder} />}
                     {f.uiType === "date" && <Input type="date" disabled />}
                     {f.uiType === "file" && <Input type="file" disabled />}
@@ -315,11 +329,9 @@ ${objects}
           <div>
             <h2 className="mb-2 font-medium">Inputs</h2>
             <div className="flex flex-wrap gap-2">
-              {["text", "email", "password", "number", "textarea", "select", "radio", "checkbox", "date", "file"].map(
-                (t) => (
-                  <DraggableItem key={t} id={`input:${t}`} label={t} />
-                )
-              )}
+              {["text", "number", "textarea", "select", "radio", "checkbox", "date", "file"].map((t) => (
+                <DraggableItem key={t} id={`input:${t}`} label={t} />
+              ))}
             </div>
           </div>
 
@@ -353,27 +365,6 @@ ${objects}
                     value={selectedField.placeholder}
                     onChange={(e) => updateField(selectedField.internalKey, { placeholder: e.target.value })}
                   />
-                </div>
-                <div>
-                  <label className="text-xs font-medium">Default Value</label>
-                  <Input
-                    value={selectedField.defaultValue || ""}
-                    onChange={(e) => updateField(selectedField.internalKey, { defaultValue: e.target.value })}
-                  />
-                </div>
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    checked={selectedField.required}
-                    onCheckedChange={(v) => updateField(selectedField.internalKey, { required: Boolean(v) })}
-                  />
-                  <label className="text-xs font-medium">Required</label>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    checked={selectedField.disabled}
-                    onCheckedChange={(v) => updateField(selectedField.internalKey, { disabled: Boolean(v) })}
-                  />
-                  <label className="text-xs font-medium">Disabled</label>
                 </div>
               </TabsContent>
 
