@@ -3,8 +3,10 @@
 import React, { useMemo } from "react"
 import { DynamicForm } from "@/components/ui/dynamic-form"
 import type { Field } from "@/components/ui/dynamic-form"
-import type { contractsResp } from "@/types/erp-1/contractsResp"
-import type { users } from "@/types/erp-1/users"
+// import type { contractsResp } from "@/types/erp-1/contractsResp"
+// import type { users } from "@/types/erp-1/users"
+import UppyDialog from "@/components/ui/uppy-dialog"
+import { MultipartFileUploader } from "@/components/ui/uppy-dashboard"
 
 export default function GeneratedFormPage() {
   const fields: Field[] = useMemo(() => [
@@ -59,33 +61,14 @@ export default function GeneratedFormPage() {
 ], [])
 
   const handleSubmit = (values: Record<string, unknown>) => {
- const contractsresp: contractsResp = {
- contract_id: undefined,
- partner_id: values["select-1759397687705"] as string,
- user_id: values["radio-1759397688825"] as string,
- title: "",
- status: undefined,
- created_at: undefined,
- updated_at: values["date-1759397694439"] as Date | undefined
-}
-
- const users: users = {
- user_id: "",
- role_id: undefined,
- username: undefined,
- password_hash: undefined,
- full_name: undefined,
- email: undefined,
-//  status: values["checkbox-1759397704280"] as boolean,
- created_at: undefined,
- updated_at: undefined
-}
-
-    console.log("Submitted objects:", { contractsresp, users })
-  }
+    console.log("Submitted objects:", values)
+  };
 
   return (
     <div className="p-1.5">
+      <MultipartFileUploader
+            onUploadSuccess={(result) => console.log(JSON.stringify(result))}
+          />
       <DynamicForm
         title="Generated Form"
         description="Form được gen tự động từ nhiều BO"

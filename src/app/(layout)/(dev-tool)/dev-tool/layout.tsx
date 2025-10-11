@@ -19,7 +19,7 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
   // Define primary nav here (you can extend from your CMS or constants later)
   const nav = useMemo(
       () => [
-        { href: "/erp-1", label: "Tổng quan", icon: Home },
+        { href: "/", label: "Tổng quan", icon: Home },
         { href: "/dev-tool/data-type", label: "Data Type", icon: Braces },
         { href: "/dev-tool/api-service", label: "API Service", icon: Waypoints },
         { href: "/dev-tool/form-builder", label: "Form Builder", icon: TextCursorInput },

@@ -64,11 +64,11 @@ export default function DocumentListTableSection() {
     setLoading(true)
     setTimeout(() => {
       const mock: testResp[] = [
-        { id: "id_1", text: "text_1", number: "number_1", date: new Date(), tag: "tag_1" },
-        { id: "id_2", text: "text_2", number: "number_2", date: new Date(), tag: "tag_2" },
-        { id: "id_3", text: "text_3", number: "number_3", date: new Date(), tag: "tag_3" },
-        { id: "id_4", text: "text_4", number: "number_4", date: new Date(), tag: "tag_4" },
-        { id: "id_5", text: "text_5", number: "number_5", date: new Date(), tag: "tag_5" }
+        { id: "id_1", text: "text_1", number: 1, date: new Date(), tag: "tag_1" },
+        { id: "id_2", text: "text_2", number: 1, date: new Date(), tag: "tag_2" },
+        { id: "id_3", text: "text_3", number: 2, date: new Date(), tag: "tag_3" },
+        { id: "id_4", text: "text_4", number: 4, date: new Date(), tag: "tag_4" },
+        { id: "id_5", text: "text_5", number: 5, date: new Date(), tag: "tag_5" }
       ]
 
 	  console.log("Search:", mock[1].text);

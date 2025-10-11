@@ -25,10 +25,10 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
   // Primary nav
   const nav = useMemo(
     () => [
-      { href: "/erp-1", label: "Tổng quan", icon: Home },
-      { href: "/erp-1/data-table", label: "Data Table", icon: Folder },
-      { href: "/erp-1/data-table2", label: "Data Table 2", icon: Upload },
-      { href: "/erp-1/invite-member", label: "Data Table 2", icon: Upload },
+      { href: "/", label: "Home", icon: Home },
+      { href: "/erp-1/data-table", label: "EFMS", icon: Home },
+      { href: "/dev-tool/data-type", label: "Dev-Tool", icon: Upload },
+      { href: "/users-permission/invite-member", label: "Users & Permission", icon: Upload },
     ],
     []
   );
