@@ -4,6 +4,7 @@ import React from "react"
 import Uppy, { type UploadResult, type UppyFile } from "@uppy/core"
 import { Dashboard } from "@uppy/react"
 import AwsS3Multipart from "@uppy/aws-s3-multipart"
+import { createattachmentService } from "@/services/erp-1/createattachment.service"
 
 import "@uppy/core/dist/style.min.css"
 import "@uppy/dashboard/dist/style.min.css"
@@ -74,7 +75,7 @@ export function MultipartFileUploader({
 
         // 🔧 Chuẩn hóa object trả về đúng 6 trường
         const formatted = {
-          attachment_id: response.id ?? crypto.randomUUID(),
+          // attachment_id: response.id ?? crypto.randomUUID(),
           file_type: file.type ?? "unknown",
           file_path: response.url,
           key: response.key,
@@ -90,6 +91,7 @@ export function MultipartFileUploader({
       async abortMultipartUpload(_file, props) {
         return fetchUploadApiEndpoint("abort-multipart-upload", props)
       },
+
     })
 
     return instance
@@ -102,8 +104,7 @@ export function MultipartFileUploader({
       if (!data) return
 
       // ⚙️ Trả lại object chỉ có 6 trường cần thiết
-      const payload = {
-        attachment_id: data.attachment_id,
+      const payload  = {
         file_type: data.file_type,
         file_path: data.file_path,
         key: data.key,
@@ -111,7 +112,13 @@ export function MultipartFileUploader({
         uploaded_at: data.uploaded_at,
       }
 
-      onUploadSuccess(payload)
+      onUploadSuccess(payload);
+
+      createattachmentService.create(payload).then((res) => {
+        console.log("✅ Attachment created in ERP-1:", res)
+      }).catch((err) => {
+        console.error("❌ Failed to create attachment in ERP-1:", err)
+      })
     }
 
     uppy.on("complete", handleComplete)
