@@ -32,6 +32,10 @@ import {
 import { CalendarIcon, Eye, EyeOff } from "lucide-react"
 import { format } from "date-fns"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { UppyDialog } from "@/components/ui/uppy-dialog"
+import { attachmentsRequest } from "@/types/erp-1/attachmentsRequest"
+import { Item, ItemMedia, ItemContent, ItemActions } from "@/components/ui/item"
+import { File } from "lucide-react"
 
 export interface Field {
   id: string
@@ -72,7 +76,7 @@ export function DynamicForm({
   disabledFields = [],
   isSubmitting = false,
 }: DynamicFormProps) {
-  // ✅ Sinh schema động có xử lý required và kiểu dữ liệu
+  // ✅ Tạo schema động
   const schemaObj: Record<string, z.ZodTypeAny> = {}
   fields.forEach((f) => {
     if (f.type === "date") {
@@ -93,6 +97,8 @@ export function DynamicForm({
       schemaObj[f.id] = f.required
         ? z.boolean().refine((val) => val === true, `${f.label} là bắt buộc`)
         : z.boolean().optional()
+    } else if (f.type === "file") {
+      schemaObj[f.id] = z.any().optional()
     } else {
       const base = z.string()
       schemaObj[f.id] = f.required
@@ -101,20 +107,7 @@ export function DynamicForm({
     }
   })
 
-  // ✅ Check password và re-password trùng nhau
-  const formSchema = z
-    .object(schemaObj)
-    .refine(
-      (data) =>
-        !("password" in data && "re-password" in data) ||
-        data["password"] === data["re-password"],
-      {
-        message: "Mật khẩu nhập lại không khớp",
-        path: ["re-password"],
-      }
-    )
-
-  // ✅ Default values
+  const formSchema = z.object(schemaObj)
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: fields.reduce((acc, f) => {
@@ -126,13 +119,15 @@ export function DynamicForm({
     }, {} as Record<string, unknown>),
   })
 
-  // 👁 Quản lý hiển thị mật khẩu
   const [showPassword, setShowPassword] = useState<Record<string, boolean>>({})
   const togglePassword = (id: string) =>
     setShowPassword((prev) => ({ ...prev, [id]: !prev[id] }))
 
-  const handleSubmit = (values: z.infer<typeof formSchema>) =>
+  const handleSubmit = (values: z.infer<typeof formSchema>) => {
+    console.log("📤 Form values:", values)
     onSubmit?.(values)
+  }
+
   const handleReset = () => {
     form.reset()
     form.clearErrors()
@@ -170,8 +165,41 @@ export function DynamicForm({
                   >
                     <FormLabel>{field.label}</FormLabel>
                     <FormControl>
-                      {/* TEXTAREA */}
-                      {field.type === "textarea" ? (
+                      {/* 🧩 File Upload */}
+                      {field.type === "file" ? (
+                        <div className="flex flex-col gap-2">
+                          <UppyDialog
+                            onUploadSuccess={(files: attachmentsRequest[]) => {
+                              form.setValue(field.id, files)
+                              console.log("📦 Uploaded files:", files)
+                            }}
+                          />
+                          {Array.isArray(rhfField.value) && rhfField.value.length > 0 && (
+                            <div className="flex flex-col gap-2">
+                              {rhfField.value.map((f: attachmentsRequest, idx: number) => (
+                                <Item key={idx} variant="outline">
+                                  <ItemMedia>
+                                    <File className="h-5 w-5 text-blue-500" />
+                                  </ItemMedia>
+                                  <ItemContent
+                                      title={f.file_name ?? "Unnamed file"}
+                                      description={`${((f.file_size ?? 0) / 1024 / 1024).toFixed(2)} MB`}
+                                    />
+                                  <ItemActions
+                                    onRemove={() => {
+                                      const newList = (rhfField.value as attachmentsRequest[]).filter(
+                                        (_, i) => i !== idx
+                                      )
+                                      form.setValue(field.id, newList)
+                                    }}
+                                  />
+                                </Item>
+                              ))}
+                            </div>
+                          )}
+
+                        </div>
+                      ) : field.type === "textarea" ? (
                         <Textarea
                           placeholder={field.placeholder}
                           {...rhfField}
@@ -221,6 +249,7 @@ export function DynamicForm({
                         </RadioGroup>
                       ) : field.type === "checkbox" ? (
                         field.options && field.options.length > 0 ? (
+                          // ✅ Checkbox nhiều lựa chọn
                           <div className="flex flex-col gap-2">
                             {field.options.map((opt) => {
                               const arr = (rhfField.value as string[]) || []
@@ -247,13 +276,14 @@ export function DynamicForm({
                             })}
                           </div>
                         ) : (
+                          // ✅ Checkbox đơn
                           <div className="flex items-center gap-2">
                             <Checkbox
                               checked={rhfField.value as boolean}
                               onCheckedChange={rhfField.onChange}
                               disabled={isDisabled}
                             />
-                            {field.label}
+                            <span>{field.label}</span>
                           </div>
                         )
                       ) : field.type === "date" ? (
@@ -279,16 +309,9 @@ export function DynamicForm({
                               mode="single"
                               selected={rhfField.value as Date | undefined}
                               onSelect={rhfField.onChange}
-                              initialFocus
                             />
                           </PopoverContent>
                         </Popover>
-                      ) : field.type === "file" ? (
-                        <Input
-                          type="file"
-                          onChange={(e) => rhfField.onChange(e.target.files)}
-                          disabled={isDisabled}
-                        />
                       ) : field.type === "password" ? (
                         <div className="relative">
                           <Input

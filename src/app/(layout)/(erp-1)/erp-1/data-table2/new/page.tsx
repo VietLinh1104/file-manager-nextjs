@@ -5,7 +5,7 @@ import { DynamicForm } from "@/components/ui/dynamic-form"
 import type { Field } from "@/components/ui/dynamic-form"
 // import type { contractsResp } from "@/types/erp-1/contractsResp"
 // import type { users } from "@/types/erp-1/users"
-import UppyDialog from "@/components/ui/uppy-dialog"
+import { UppyDialog } from "@/components/ui/uppy-dialog"
 import { MultipartFileUploader } from "@/components/ui/uppy-dashboard"
 
 export default function GeneratedFormPage() {
@@ -57,7 +57,8 @@ export default function GeneratedFormPage() {
     "placeholder": "",
     "type": "checkbox",
     "colSpan": 1
-  }
+  },
+  { id: "attachments", label: "Tệp đính kèm", type: "file" ,"colSpan": 2}
 ], [])
 
   const handleSubmit = (values: Record<string, unknown>) => {
@@ -66,9 +67,9 @@ export default function GeneratedFormPage() {
 
   return (
     <div className="p-1.5">
-      <MultipartFileUploader
+      {/* <MultipartFileUploaderDialog
             onUploadSuccess={(result) => console.log(JSON.stringify(result))}
-          />
+          /> */}
       <DynamicForm
         title="Generated Form"
         description="Form được gen tự động từ nhiều BO"

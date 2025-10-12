@@ -1,15 +1,17 @@
 "use client"
 
-import React from "react"
+import React, { useState, useEffect, useMemo } from "react"
 import Uppy, { type UploadResult, type UppyFile } from "@uppy/core"
 import { Dashboard } from "@uppy/react"
 import AwsS3Multipart from "@uppy/aws-s3-multipart"
+import { Button } from "@/components/ui/button"
 import { createattachmentService } from "@/services/erp-1/createattachment.service"
 import { attachmentsRequest } from "@/types/erp-1/attachmentsRequest"
 
 import "@uppy/core/dist/style.min.css"
 import "@uppy/dashboard/dist/style.min.css"
 
+/** 🔹 Gọi API backend an toàn */
 const fetchUploadApiEndpoint = async (endpoint: string, data: object) => {
   const res = await fetch(`/api/multipart-upload/${endpoint}`, {
     method: "POST",
@@ -28,22 +30,20 @@ const fetchUploadApiEndpoint = async (endpoint: string, data: object) => {
   return res.json()
 }
 
+/** 🔹 Component upload file */
 export function MultipartFileUploader({
   onUploadSuccess,
 }: {
-  onUploadSuccess: (result: {
-    file_name: string
-    file_type: string
-    file_path: string
-    key: string
-    file_size: number
-    uploaded_at: string
-  }) => void
+  onUploadSuccess: (result: attachmentsRequest[]) => void
 }) {
-  const uppy = React.useMemo(() => {
+  const [isUploading, setIsUploading] = useState(false)
+
+  const uppy = useMemo(() => {
     const instance = new Uppy({
-      autoProceed: true,
-      restrictions: { maxNumberOfFiles: 1 },
+      autoProceed: false, // ⚠️ chỉ upload khi bấm nút
+      restrictions: {
+        maxNumberOfFiles: null, // ✅ cho phép nhiều file
+      },
     })
 
     instance.use(AwsS3Multipart, {
@@ -63,14 +63,10 @@ export function MultipartFileUploader({
       },
 
       async completeMultipartUpload(file: UppyFile, props) {
-        const response = await fetchUploadApiEndpoint(
-          "complete-multipart-upload",
-          props
-        )
+        const response = await fetchUploadApiEndpoint("complete-multipart-upload", props)
 
-        // 🔧 Chuẩn hóa object trả về
-        const formatted = {
-          file_name: response.file_name ?? file.name, // ✅ thêm tên file
+        const formatted: attachmentsRequest = {
+          file_name: response.file_name ?? file.name,
           file_type: file.type ?? "unknown",
           file_path: response.url,
           key: response.key,
@@ -90,32 +86,48 @@ export function MultipartFileUploader({
     return instance
   }, [])
 
-  React.useEffect(() => {
+  /** 🔹 Khi người dùng thêm file */
+  useEffect(() => {
+    const handleFileAdded = (file: UppyFile) => {
+      console.log("📎 File vừa được thêm vào Uppy:")
+      console.table({
+        id: file.id,
+        name: file.name,
+        type: file.type,
+        size: `${(file.size ?? 0) / 1024 / 1024} MB`,
+      })
+    }
+
+    uppy.on("file-added", handleFileAdded)
+    return () => {
+      uppy.off("file-added", handleFileAdded)
+    }
+  }, [uppy])
+
+  /** 🔹 Khi upload hoàn tất */
+  useEffect(() => {
     const handleComplete = (result: UploadResult) => {
-      const data:attachmentsRequest = result.successful?.[0]?.response?.body
-      if (!data) return
+      setIsUploading(false)
 
-      const payload:attachmentsRequest = {
-        file_name: data.file_name,
-        file_type: data.file_type,
-        file_path: data.file_path,
-        key: data.key,
-        file_size: data.file_size,
-        uploaded_at: data.uploaded_at,
-      }
+      const uploadedFiles = result.successful.map((s) => s.response?.body) as attachmentsRequest[]
+      if (!uploadedFiles?.length) return
 
-      onUploadSuccess(payload)
+      console.log("✅ Danh sách file đã upload:", uploadedFiles)
 
-      createattachmentService
-        .create(payload)
-        .then((res) => {
-          console.log("✅ Attachment created in ERP-1:", res)
-        })
-        .catch((err) => {
-          console.error("❌ Failed to create attachment in ERP-1:", err)
-        })
+      // Gọi callback ngoài
+      onUploadSuccess(uploadedFiles)
 
-      console.log("Attachment payload:", payload)
+      // Gọi API lưu từng file vào ERP-1
+      uploadedFiles.forEach((file) => {
+        createattachmentService
+          .create(file)
+          .then((res) => {
+            console.log(`✅ Đã lưu ${file.file_name} vào ERP-1:`, res)
+          })
+          .catch((err) => {
+            console.error(`❌ Lỗi khi lưu ${file.file_name}:`, err)
+          })
+      })
     }
 
     uppy.on("complete", handleComplete)
@@ -124,12 +136,52 @@ export function MultipartFileUploader({
     }
   }, [uppy, onUploadSuccess])
 
+  /** 🔹 Khi nhấn nút Upload */
+  const handleUpload = () => {
+    const files = uppy.getFiles()
+    if (files.length === 0) {
+      alert("⚠️ Vui lòng chọn ít nhất một file trước khi upload.")
+      return
+    }
+
+    console.log("📂 File(s) đang chờ upload:")
+    console.table(
+      files.map((f) => ({
+        id: f.id,
+        name: f.name,
+        type: f.type,
+        size: `${(f.size ?? 0) / 1024 / 1024} MB`,
+      }))
+    )
+
+    setIsUploading(true)
+    uppy.upload().catch((err) => {
+      console.error("❌ Lỗi upload:", err)
+      setIsUploading(false)
+    })
+  }
+
   return (
-    <Dashboard
-      uppy={uppy}
-      proudlyDisplayPoweredByUppy={false}
-      height={400}
-      width="100%"
-    />
+    <div className="space-y-4">
+      <Dashboard
+        uppy={uppy}
+        proudlyDisplayPoweredByUppy={false}
+        height={380}
+        width="100%"
+        hideUploadButton // ✅ ẩn nút upload mặc định của Uppy
+        hideRetryButton={false}
+        hidePauseResumeButton={false}
+      />
+
+      <div className="flex justify-end">
+        <Button
+          onClick={handleUpload}
+          disabled={isUploading}
+          variant={isUploading ? "secondary" : "default"}
+        >
+          {isUploading ? "Đang upload..." : "📤 Upload tất cả file lên Cloudflare R2"}
+        </Button>
+      </div>
+    </div>
   )
 }
