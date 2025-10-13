@@ -7,105 +7,80 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-//
 // ==========================
 // Business Object (BO)
 // ==========================
 model DataType {
-  id        Int       @id @default(autoincrement())
-  name      String    @unique           // Tên BO duy nhất
-  fields    Field[]                    // Các field con
-  createdAt DateTime @default(now())
-
-  // Các field từ BO khác tham chiếu tới BO này
-  referencedBy Field[] @relation("FieldRefBO")
-
-  tsFilePath String?                   // Đường dẫn file type đã generate
-
-  // Quan hệ ngược với View
-  views View[]
+  id         Int      @id @default(autoincrement())
+  name       String   @unique
+  fields     Field[]
+  createdAt  DateTime @default(now())
+  tsFilePath String?
+  views      View[]
 }
 
 model Field {
-  id       Int      @id @default(autoincrement())
+  id       Int     @id @default(autoincrement())
   name     String
   type     String
   required Boolean
-  isList   Boolean  @default(false)
+  isList   Boolean @default(false)
 
-  // Thuộc về DataType nào
   dataType   DataType @relation(fields: [dataTypeId], references: [id], onDelete: Cascade)
   dataTypeId Int
 
-  // Nếu field là 1 BO, thì tham chiếu đến BO đó
-  refBO   DataType? @relation("FieldRefBO", fields: [refBOId], references: [id])
-  refBOId Int?
+  @@unique([name, dataTypeId]) // ✅ thêm dòng này
 }
 
-//
-// ==========================
-// API Service
-// ==========================
 model ApiService {
-  id        Int       @id @default(autoincrement())
-  name      String    // Tên service, vd: "PaymentService"
-  baseUrl   String    // Endpoint API, vd: "/erp-1/payments"
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  tsFilePath String?  // Đường dẫn file service đã generate
-
-  // Một service có nhiều method
-  methods ApiMethod[]
-
-  // Quan hệ ngược với View
-  views View[]
+  id         Int         @id @default(autoincrement())
+  name       String      @unique
+  baseUrl    String
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  tsFilePath String?
+  methods    ApiMethod[]
+  views      View[]
 }
 
 model ApiMethod {
-  id            Int       @id @default(autoincrement())
-  name          String    // Tên method: getAll, getById, create...
-  returnType    String    // Kiểu trả về (string | number | boolean | MyBO…)
-  isList        Boolean   @default(false)  // Có phải trả về list không
-  required      Boolean   @default(true)   // Bắt buộc trả về?
-  documentation String?   // Mô tả method
+  id            Int        @id @default(autoincrement())
+  name          String
+  returnType    String
+  isList        Boolean    @default(false)
+  documentation String?
+  service       ApiService @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  serviceId     Int
+  params        ApiParam[]
 
-  // Thuộc về ApiService nào
-  service   ApiService @relation(fields: [serviceId], references: [id], onDelete: Cascade)
-  serviceId Int
-
-  // Một method có nhiều param
-  params ApiParam[]
+  @@unique([name, serviceId])
 }
 
 model ApiParam {
-  id       Int    @id @default(autoincrement())
-  name     String // Tên param: id, filter...
-  type     String // Kiểu dữ liệu: string, number, boolean, MyBO…
-  isList   Boolean @default(false)
-  required Boolean @default(true)
-
-  // Thuộc về ApiMethod nào
+  id       Int       @id @default(autoincrement())
+  name     String
+  type     String
+  isList   Boolean   @default(false)
+  required Boolean   @default(true)
   method   ApiMethod @relation(fields: [methodId], references: [id], onDelete: Cascade)
   methodId Int
 }
 
-//
-// ==========================
-// View
-// ==========================
 model View {
-  id   Int    @id @default(autoincrement())
-  name String @unique          // Tên view, vd: "Customer List"
-  type String                  // Loại view: "table" | "input"
+  id           Int         @id @default(autoincrement())
+  name         String
+  createdAt    DateTime    @default(now())
+  dataType     DataType?   @relation(fields: [dataTypeId], references: [id])
+  dataTypeId   Int?
+  apiService   ApiService? @relation(fields: [apiServiceId], references: [id])
+  apiServiceId Int?
+}
 
-  apiId Int
-  api   ApiService @relation(fields: [apiId], references: [id], onDelete: Cascade)
-
-  dataTypeId Int
-  dataType   DataType @relation(fields: [dataTypeId], references: [id], onDelete: Cascade)
-
-  path      String             // Path của view: vd "/dev-tool/gen-view/customer-list"
-  config    Json               // Cấu hình mapping field <-> column/input
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+// 🔹 Lưu lịch sử upload Swagger
+model SwaggerUpload {
+  id         Int      @id @default(autoincrement())
+  fileName   String
+  uploadedAt DateTime @default(now())
+  apiCount   Int
+  typeCount  Int
 }
