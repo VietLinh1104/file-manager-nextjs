@@ -110,6 +110,7 @@ export async function POST(request: Request, context: { params: { endpoint: stri
           MultipartUpload: { Parts: parts },
         })
 
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const resp = await s3.send(cmd)
 
         // ⚙️ Chuẩn hóa dữ liệu trả về frontend

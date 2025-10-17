@@ -2,26 +2,26 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-import type { Attachments } from '../models/Attachments';
-import type { AttachmentsRequest } from '../models/AttachmentsRequest';
 import type { Pageable } from '../models/Pageable';
-import type { PageAttachments } from '../models/PageAttachments';
+import type { PageTransactions } from '../models/PageTransactions';
+import type { TransactionRequest } from '../models/TransactionRequest';
+import type { Transactions } from '../models/Transactions';
 import type { CancelablePromise } from '../core/CancelablePromise';
 import { OpenAPI } from '../core/OpenAPI';
 import { request as __request } from '../core/request';
-export class AttachmentsControllerService {
+export class TransactionControllerService {
     /**
      * @param id
-     * @returns Attachments OK
+     * @returns Transactions OK
      * @throws ApiError
      */
-    public static getAttachmentById(
+    public static getTransactionById(
         id: string,
-    ): CancelablePromise<Attachments> {
+    ): CancelablePromise<Transactions> {
         return __request(OpenAPI, {
             method: 'GET',
-            url: '/api/attachments/{id}',
-            query: {
+            url: '/api/transactions/{id}',
+            path: {
                 'id': id,
             },
         });
@@ -29,17 +29,17 @@ export class AttachmentsControllerService {
     /**
      * @param id
      * @param requestBody
-     * @returns Attachments OK
+     * @returns Transactions OK
      * @throws ApiError
      */
-    public static updateAttachmentById(
+    public static updateTransaction(
         id: string,
-        requestBody: AttachmentsRequest,
-    ): CancelablePromise<Attachments> {
+        requestBody: TransactionRequest,
+    ): CancelablePromise<Transactions> {
         return __request(OpenAPI, {
             method: 'PUT',
-            url: '/api/attachments/{id}',
-            query: {
+            url: '/api/transactions/{id}',
+            path: {
                 'id': id,
             },
             body: requestBody,
@@ -51,28 +51,28 @@ export class AttachmentsControllerService {
      * @returns any OK
      * @throws ApiError
      */
-    public static deleteAttachmentById(
+    public static deleteTransaction(
         id: string,
     ): CancelablePromise<any> {
         return __request(OpenAPI, {
             method: 'DELETE',
-            url: '/api/attachments/{id}',
-            query: {
+            url: '/api/transactions/{id}',
+            path: {
                 'id': id,
             },
         });
     }
     /**
      * @param pageable
-     * @returns PageAttachments OK
+     * @returns PageTransactions OK
      * @throws ApiError
      */
-    public static getListAttachmentsPage(
+    public static getAllTransactions(
         pageable: Pageable,
-    ): CancelablePromise<PageAttachments> {
+    ): CancelablePromise<PageTransactions> {
         return __request(OpenAPI, {
             method: 'GET',
-            url: '/api/attachments',
+            url: '/api/transactions',
             query: {
                 'pageable': pageable,
             },
@@ -80,27 +80,27 @@ export class AttachmentsControllerService {
     }
     /**
      * @param requestBody
-     * @returns Attachments OK
+     * @returns Transactions OK
      * @throws ApiError
      */
-    public static createAttachment(
-        requestBody: AttachmentsRequest,
-    ): CancelablePromise<Attachments> {
+    public static createTransaction(
+        requestBody: TransactionRequest,
+    ): CancelablePromise<Transactions> {
         return __request(OpenAPI, {
             method: 'POST',
-            url: '/api/attachments',
+            url: '/api/transactions',
             body: requestBody,
             mediaType: 'application/json',
         });
     }
     /**
-     * @returns Attachments OK
+     * @returns Transactions OK
      * @throws ApiError
      */
-    public static getListAttachments(): CancelablePromise<Array<Attachments>> {
+    public static getAllTransactions1(): CancelablePromise<Array<Transactions>> {
         return __request(OpenAPI, {
             method: 'GET',
-            url: '/api/attachments/all',
+            url: '/api/transactions/all',
         });
     }
 }

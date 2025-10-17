@@ -9,13 +9,55 @@ import { OpenAPI } from '../core/OpenAPI';
 import { request as __request } from '../core/request';
 export class TransactionCategoryControllerService {
     /**
+     * @param id
      * @returns TransactionCategory OK
      * @throws ApiError
      */
-    public static getAllTransactionCategory(): CancelablePromise<Array<TransactionCategory>> {
+    public static getTransactionCategoryById(
+        id: string,
+    ): CancelablePromise<TransactionCategory> {
         return __request(OpenAPI, {
             method: 'GET',
-            url: '/api/transaction-category',
+            url: '/api/transaction-category/{id}',
+            path: {
+                'id': id,
+            },
+        });
+    }
+    /**
+     * @param id
+     * @param requestBody
+     * @returns TransactionCategory OK
+     * @throws ApiError
+     */
+    public static updateTransactionCategory(
+        id: string,
+        requestBody: TransactionCategoryRequest,
+    ): CancelablePromise<TransactionCategory> {
+        return __request(OpenAPI, {
+            method: 'PUT',
+            url: '/api/transaction-category/{id}',
+            path: {
+                'id': id,
+            },
+            body: requestBody,
+            mediaType: 'application/json',
+        });
+    }
+    /**
+     * @param id
+     * @returns any OK
+     * @throws ApiError
+     */
+    public static deleteTransactionCategory(
+        id: string,
+    ): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'DELETE',
+            url: '/api/transaction-category/{id}',
+            path: {
+                'id': id,
+            },
         });
     }
     /**
@@ -31,6 +73,16 @@ export class TransactionCategoryControllerService {
             url: '/api/transaction-category',
             body: requestBody,
             mediaType: 'application/json',
+        });
+    }
+    /**
+     * @returns TransactionCategory OK
+     * @throws ApiError
+     */
+    public static getAllTransactionCategories(): CancelablePromise<Array<TransactionCategory>> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/transaction-category/all',
         });
     }
 }

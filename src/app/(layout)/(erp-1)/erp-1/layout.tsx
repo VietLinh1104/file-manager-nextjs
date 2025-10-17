@@ -9,7 +9,6 @@ import {
   Folder,
   Home,
   Upload,
-  Settings,
   Search,
   ChevronDown,
   MessageSquare,
@@ -27,8 +26,9 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
     () => [
       { href: "/", label: "Tổng quan", icon: Home },
       { href: "/erp-1/data-table", label: "Data Table", icon: Folder },
-      { href: "/erp-1/data-table2", label: "Data Table 2", icon: Upload },    ],
-    []
+      { href: "/erp-1/data-table2", label: "Data Table 2", icon: Upload },
+      { href: "/erp-1/giao-dich", label: "Giao Dịch", icon: Folder },
+    ],[]
   );
 
   // Fake data: recent activity

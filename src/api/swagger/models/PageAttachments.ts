@@ -2,14 +2,14 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
+import type { Attachments } from './Attachments';
 import type { PageableObject } from './PageableObject';
-import type { Role } from './Role';
 import type { SortObject } from './SortObject';
-export type PageRole = {
+export type PageAttachments = {
     totalPages?: number;
     totalElements?: number;
     size?: number;
-    content?: Array<Role>;
+    content?: Array<Attachments>;
     number?: number;
     sort?: SortObject;
     numberOfElements?: number;

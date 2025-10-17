@@ -3,13 +3,13 @@
 /* tslint:disable */
 /* eslint-disable */
 import type { PageableObject } from './PageableObject';
-import type { Role } from './Role';
+import type { Partners } from './Partners';
 import type { SortObject } from './SortObject';
-export type PageRole = {
+export type PagePartners = {
     totalPages?: number;
     totalElements?: number;
     size?: number;
-    content?: Array<Role>;
+    content?: Array<Partners>;
     number?: number;
     sort?: SortObject;
     numberOfElements?: number;
