@@ -5,6 +5,7 @@
 import type { Pageable } from '../models/Pageable';
 import type { PageTransactions } from '../models/PageTransactions';
 import type { TransactionRequest } from '../models/TransactionRequest';
+import type { TransactionResponse } from '../models/TransactionResponse';
 import type { Transactions } from '../models/Transactions';
 import type { CancelablePromise } from '../core/CancelablePromise';
 import { OpenAPI } from '../core/OpenAPI';
@@ -12,12 +13,12 @@ import { request as __request } from '../core/request';
 export class TransactionControllerService {
     /**
      * @param id
-     * @returns Transactions OK
+     * @returns TransactionResponse OK
      * @throws ApiError
      */
     public static getTransactionById(
         id: string,
-    ): CancelablePromise<Transactions> {
+    ): CancelablePromise<TransactionResponse> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/transactions/{id}',

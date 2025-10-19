@@ -26,6 +26,7 @@ export type { SortObject } from './models/SortObject';
 export type { TransactionCategory } from './models/TransactionCategory';
 export type { TransactionCategoryRequest } from './models/TransactionCategoryRequest';
 export type { TransactionRequest } from './models/TransactionRequest';
+export type { TransactionResponse } from './models/TransactionResponse';
 export type { Transactions } from './models/Transactions';
 export type { User } from './models/User';
 

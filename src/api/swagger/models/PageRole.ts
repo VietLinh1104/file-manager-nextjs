@@ -6,16 +6,16 @@ import type { PageableObject } from './PageableObject';
 import type { Role } from './Role';
 import type { SortObject } from './SortObject';
 export type PageRole = {
-    totalPages?: number;
     totalElements?: number;
+    totalPages?: number;
     size?: number;
     content?: Array<Role>;
     number?: number;
     sort?: SortObject;
-    numberOfElements?: number;
     pageable?: PageableObject;
     first?: boolean;
     last?: boolean;
+    numberOfElements?: number;
     empty?: boolean;
 };
 

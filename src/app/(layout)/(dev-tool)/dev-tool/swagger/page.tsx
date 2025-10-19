@@ -3,11 +3,11 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { toast } from "sonner"
 
 export default function SwaggerUploadPage() {
   const [file, setFile] = useState<File | null>(null)
   const [loading, setLoading] = useState(false)
-  const [message, setMessage] = useState("")
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -24,8 +24,10 @@ export default function SwaggerUploadPage() {
     const data = await res.json()
     setLoading(false)
 
-    if (data.success) setMessage("✅ Generate & lưu thành công!")
-    else setMessage("❌ Lỗi: " + data.error)
+    if (data.success) {
+      toast.success("Generate & lưu thành công!")    }
+    
+    else toast.error("Lỗi: " + data.error)
   }
 
   return (
@@ -37,7 +39,6 @@ export default function SwaggerUploadPage() {
           {loading ? "Đang xử lý..." : "Upload & Generate"}
         </Button>
       </form>
-      {message && <p className="mt-4 text-sm">{message}</p>}
     </div>
   )
 }

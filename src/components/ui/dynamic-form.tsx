@@ -1,10 +1,9 @@
-"use client"
-
 import React, { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { Checkbox } from "@/components/ui/checkbox"
+import { toast } from "sonner"
+import api from "@/lib/axios"
 import {
   Form,
   FormControl,
@@ -29,13 +28,12 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-import { CalendarIcon, Eye, EyeOff } from "lucide-react"
+import { CalendarIcon, Eye, EyeOff, Pencil, Trash } from "lucide-react"
 import { format } from "date-fns"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { UppyDialog } from "@/components/ui/uppy-dialog"
 import { attachmentsRequest } from "@/types/erp-1/attachmentsRequest"
-import { Item, ItemMedia, ItemContent, ItemActions } from "@/components/ui/item"
-import { File } from "lucide-react"
+import { Attachments } from "@/api/swagger"
+import { AttachmentList } from "@/components/ui/attachment-list"
 
 export interface Field {
   id: string
@@ -51,7 +49,7 @@ export interface Field {
     | "date"
     | "file"
     | "number"
-  defaultValue?: string | string[] | Date | boolean
+  defaultValue?: string | string[] | Date | boolean | number | Attachments[]
   placeholder?: string
   options?: { value: string; name: string }[]
   colSpan?: number
@@ -66,6 +64,9 @@ interface DynamicFormProps {
   onSubmit?: (values: Record<string, unknown>) => void
   disabledFields?: string[]
   isSubmitting?: boolean
+  readOnly?: boolean
+  onEditClick?: () => void
+  onDeleteClick?: () => void
 }
 
 export function DynamicForm({
@@ -75,6 +76,9 @@ export function DynamicForm({
   onSubmit,
   disabledFields = [],
   isSubmitting = false,
+  readOnly = false,
+  onEditClick,
+  onDeleteClick,
 }: DynamicFormProps) {
   // ✅ Tạo schema động
   const schemaObj: Record<string, z.ZodTypeAny> = {}
@@ -99,6 +103,20 @@ export function DynamicForm({
         : z.boolean().optional()
     } else if (f.type === "file") {
       schemaObj[f.id] = z.any().optional()
+    } else if (f.type === "number") {
+      const base = z.preprocess(
+        (val) => {
+          if (typeof val === "string" && val.trim() !== "") {
+            const num = Number(val.replace(/\./g, "").replace(/,/g, ""))
+            return isNaN(num) ? undefined : num
+          }
+          return val
+        },
+        z.number().refine((v) => !isNaN(v), `${f.label} phải là số`)
+      )
+      schemaObj[f.id] = f.required
+        ? base.refine((v) => !isNaN(v), `${f.label} là bắt buộc`)
+        : base.optional()
     } else {
       const base = z.string()
       schemaObj[f.id] = f.required
@@ -108,12 +126,14 @@ export function DynamicForm({
   })
 
   const formSchema = z.object(schemaObj)
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: fields.reduce((acc, f) => {
       if (f.type === "checkbox" && f.options?.length)
         acc[f.id] = (f.defaultValue as string[]) || []
       else if (f.type === "checkbox") acc[f.id] = Boolean(f.defaultValue)
+      else if (f.type === "file") acc[f.id] = f.defaultValue ?? []
       else acc[f.id] = f.defaultValue ?? ""
       return acc
     }, {} as Record<string, unknown>),
@@ -138,8 +158,23 @@ export function DynamicForm({
       <form
         onSubmit={form.handleSubmit(handleSubmit)}
         onReset={handleReset}
-        className="w-full mx-auto rounded-md border p-6 space-y-6"
+        className="w-full mx-auto rounded-md border p-6 space-y-6 relative"
       >
+        {/* 🧭 Góc phải: Edit/Delete */}
+        <div className="absolute top-4 right-4 flex gap-2">
+          {onEditClick && (
+            <Button type="button" size="sm" variant="secondary" onClick={onEditClick}>
+              <Pencil className="h-4 w-4 mr-1" /> Sửa
+            </Button>
+          )}
+          {onDeleteClick && (
+            <Button type="button" size="sm" variant="destructive" onClick={onDeleteClick}>
+              <Trash className="h-4 w-4 mr-1" /> Xóa
+            </Button>
+          )}
+        </div>
+
+        {/* Tiêu đề & mô tả */}
         <div>
           <h2 className="text-xl font-semibold">{title}</h2>
           {description && (
@@ -147,10 +182,11 @@ export function DynamicForm({
           )}
         </div>
 
+        {/* Body form */}
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
           {fields.map((field) => {
             const isDisabled =
-              isSubmitting || disabledFields.includes(field.id) || field.disabled
+              readOnly || isSubmitting || disabledFields.includes(field.id) || field.disabled
 
             return (
               <FormField
@@ -159,45 +195,55 @@ export function DynamicForm({
                 name={field.id}
                 render={({ field: rhfField }) => (
                   <FormItem
-                    className={`grid gap-2 ${
-                      field.colSpan === 2 ? "md:col-span-2" : ""
-                    }`}
+                    className={`grid gap-2 ${field.colSpan === 2 ? "md:col-span-2" : ""}`}
                   >
                     <FormLabel>{field.label}</FormLabel>
                     <FormControl>
-                      {/* 🧩 File Upload */}
                       {field.type === "file" ? (
                         <div className="flex flex-col gap-2">
-                          <UppyDialog
-                            onUploadSuccess={(files: attachmentsRequest[]) => {
-                              form.setValue(field.id, files)
-                              console.log("📦 Uploaded files:", files)
-                            }}
-                          />
-                          {Array.isArray(rhfField.value) && rhfField.value.length > 0 && (
-                            <div className="flex flex-col gap-2">
-                              {rhfField.value.map((f: attachmentsRequest, idx: number) => (
-                                <Item key={idx} variant="outline">
-                                  <ItemMedia>
-                                    <File className="h-5 w-5 text-blue-500" />
-                                  </ItemMedia>
-                                  <ItemContent
-                                      title={f.file_name ?? "Unnamed file"}
-                                      description={`${((f.file_size ?? 0) / 1024 / 1024).toFixed(2)} MB`}
-                                    />
-                                  <ItemActions
-                                    onRemove={() => {
-                                      const newList = (rhfField.value as attachmentsRequest[]).filter(
-                                        (_, i) => i !== idx
-                                      )
-                                      form.setValue(field.id, newList)
-                                    }}
-                                  />
-                                </Item>
-                              ))}
-                            </div>
-                          )}
+                          {readOnly ? (
+                            <AttachmentList
+                              files={(rhfField.value as Attachments[]) ?? []}
+                              readOnly
+                            />
+                          ) : (
+                            <>
+                              {/* ✅ Upload xử lý trong UppyDialog */}
+                              <UppyDialog
+                                onUploadSuccess={(uploadedFiles: attachmentsRequest[]) => {
+                                  form.setValue(field.id, uploadedFiles)
+                                  console.log("📦 Đã nhận file từ Uppy:", uploadedFiles)
+                                }}
+                              />
 
+                              {/* ✅ Hiển thị danh sách file đã upload */}
+                              <AttachmentList
+                                files={(rhfField.value as Attachments[]) ?? []}
+                                // onRemove={(idx) => {
+                                //   const newList = (rhfField.value as attachmentsRequest[]).filter(
+                                //     (_, i) => i !== idx
+                                //   )
+                                //   form.setValue(field.id, newList)
+                                // }}
+                            //     onDeleteServer={async (attachmentId) => {
+                            //       try {
+                            //         await api.delete(`/api/attachments/${attachmentId}`)
+                            //         const newList = (rhfField.value as attachmentsRequest[]).filter(
+                            //           (f: Attachments) =>
+                            //             f.attachmentId !== attachmentId &&
+                            //             f.attachmentId !== attachmentId
+                            //         )
+                            //         form.setValue(field.id, newList)
+                            //         toast.success("Đã xóa tệp thành công")
+                            //       } catch (err) {
+                            //         console.error("❌ Lỗi khi xóa file:", err)
+                            //         toast.error("Không thể xóa tệp. Vui lòng thử lại.")
+                            //       }
+                            //     }
+							// }
+                              />
+                            </>
+                          )}
                         </div>
                       ) : field.type === "textarea" ? (
                         <Textarea
@@ -205,7 +251,49 @@ export function DynamicForm({
                           {...rhfField}
                           value={rhfField.value as string}
                           disabled={isDisabled}
+                          readOnly={readOnly}
                         />
+                      ) : field.type === "number" ? (
+                        <Input
+                          type="text"
+                          inputMode="numeric"
+                          placeholder={field.placeholder}
+                          value={
+                            rhfField.value
+                              ? Number(rhfField.value).toLocaleString("vi-VN")
+                              : ""
+                          }
+                          onChange={(e) => {
+                            const raw = e.target.value.replace(/\./g, "").replace(/,/g, "")
+                            if (!isNaN(Number(raw))) rhfField.onChange(Number(raw))
+                          }}
+                          disabled={isDisabled}
+                          readOnly={readOnly}
+                        />
+                      ) : field.type === "password" ? (
+                        <div className="relative">
+                          <Input
+                            type={showPassword[field.id] ? "text" : "password"}
+                            placeholder={field.placeholder}
+                            {...rhfField}
+                            value={rhfField.value as string}
+                            disabled={isDisabled}
+                            readOnly={readOnly}
+                          />
+                          {!readOnly && (
+                            <button
+                              type="button"
+                              onClick={() => togglePassword(field.id)}
+                              className="absolute inset-y-0 right-2 flex items-center text-gray-500 hover:text-gray-700"
+                            >
+                              {showPassword[field.id] ? (
+                                <EyeOff className="h-4 w-4" />
+                              ) : (
+                                <Eye className="h-4 w-4" />
+                              )}
+                            </button>
+                          )}
+                        </div>
                       ) : field.type === "select" ? (
                         <Select
                           onValueChange={rhfField.onChange}
@@ -213,9 +301,7 @@ export function DynamicForm({
                           disabled={isDisabled}
                         >
                           <SelectTrigger className="w-full">
-                            <SelectValue
-                              placeholder={field.placeholder || "Chọn..."}
-                            />
+                            <SelectValue placeholder={field.placeholder || "Chọn..."} />
                           </SelectTrigger>
                           <SelectContent>
                             {field.options?.map((opt) => (
@@ -225,72 +311,11 @@ export function DynamicForm({
                             ))}
                           </SelectContent>
                         </Select>
-                      ) : field.type === "radio" ? (
-                        <RadioGroup
-                          onValueChange={rhfField.onChange}
-                          defaultValue={String(rhfField.value || "")}
-                          className="flex gap-4"
-                        >
-                          {field.options?.map((opt) => (
-                            <div
-                              key={opt.value}
-                              className="flex items-center gap-2"
-                            >
-                              <RadioGroupItem
-                                value={opt.value}
-                                id={`${field.id}-${opt.value}`}
-                                disabled={isDisabled}
-                              />
-                              <label htmlFor={`${field.id}-${opt.value}`}>
-                                {opt.name}
-                              </label>
-                            </div>
-                          ))}
-                        </RadioGroup>
-                      ) : field.type === "checkbox" ? (
-                        field.options && field.options.length > 0 ? (
-                          // ✅ Checkbox nhiều lựa chọn
-                          <div className="flex flex-col gap-2">
-                            {field.options.map((opt) => {
-                              const arr = (rhfField.value as string[]) || []
-                              return (
-                                <label
-                                  key={opt.value}
-                                  className="flex items-center gap-2"
-                                >
-                                  <Checkbox
-                                    checked={arr.includes(opt.value)}
-                                    onCheckedChange={(checked) => {
-                                      if (checked)
-                                        rhfField.onChange([...arr, opt.value])
-                                      else
-                                        rhfField.onChange(
-                                          arr.filter((v) => v !== opt.value)
-                                        )
-                                    }}
-                                    disabled={isDisabled}
-                                  />
-                                  {opt.name}
-                                </label>
-                              )
-                            })}
-                          </div>
-                        ) : (
-                          // ✅ Checkbox đơn
-                          <div className="flex items-center gap-2">
-                            <Checkbox
-                              checked={rhfField.value as boolean}
-                              onCheckedChange={rhfField.onChange}
-                              disabled={isDisabled}
-                            />
-                            <span>{field.label}</span>
-                          </div>
-                        )
                       ) : field.type === "date" ? (
                         <Popover>
                           <PopoverTrigger asChild>
                             <Button
-                              variant={"outline"}
+                              variant="outline"
                               className="justify-start text-left font-normal w-full"
                               disabled={isDisabled}
                             >
@@ -298,9 +323,7 @@ export function DynamicForm({
                               {rhfField.value ? (
                                 format(rhfField.value as Date, "PPP")
                               ) : (
-                                <span className="text-muted-foreground">
-                                  Pick a date
-                                </span>
+                                <span className="text-muted-foreground">Chọn ngày</span>
                               )}
                             </Button>
                           </PopoverTrigger>
@@ -312,29 +335,6 @@ export function DynamicForm({
                             />
                           </PopoverContent>
                         </Popover>
-                      ) : field.type === "password" ? (
-                        <div className="relative">
-                          <Input
-                            type={
-                              showPassword[field.id] ? "text" : "password"
-                            }
-                            placeholder={field.placeholder}
-                            {...rhfField}
-                            value={rhfField.value as string}
-                            disabled={isDisabled}
-                          />
-                          <button
-                            type="button"
-                            onClick={() => togglePassword(field.id)}
-                            className="absolute inset-y-0 right-2 flex items-center text-gray-500 hover:text-gray-700"
-                          >
-                            {showPassword[field.id] ? (
-                              <EyeOff className="h-4 w-4" />
-                            ) : (
-                              <Eye className="h-4 w-4" />
-                            )}
-                          </button>
-                        </div>
                       ) : (
                         <Input
                           type={field.type || "text"}
@@ -342,6 +342,7 @@ export function DynamicForm({
                           {...rhfField}
                           value={rhfField.value as string}
                           disabled={isDisabled}
+                          readOnly={readOnly}
                         />
                       )}
                     </FormControl>
@@ -353,14 +354,20 @@ export function DynamicForm({
           })}
         </div>
 
-        <div className="flex justify-end gap-2">
-          <Button type="reset" variant="outline">
-            Cancel
-          </Button>
-          <Button type="submit" disabled={isSubmitting}>
-            Submit
-          </Button>
-        </div>
+        {/* Footer */}
+        {!readOnly && (
+          <div className="flex justify-end gap-2">
+            <Button type="reset" variant="outline">
+              Hủy
+            </Button>
+            <Button 
+				type="submit" 
+				disabled={isSubmitting || !form.formState.isDirty}
+				>
+				Lưu
+			</Button>
+          </div>
+        )}
       </form>
     </Form>
   )

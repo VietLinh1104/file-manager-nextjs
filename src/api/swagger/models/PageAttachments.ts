@@ -6,16 +6,16 @@ import type { Attachments } from './Attachments';
 import type { PageableObject } from './PageableObject';
 import type { SortObject } from './SortObject';
 export type PageAttachments = {
-    totalPages?: number;
     totalElements?: number;
+    totalPages?: number;
     size?: number;
     content?: Array<Attachments>;
     number?: number;
     sort?: SortObject;
-    numberOfElements?: number;
     pageable?: PageableObject;
     first?: boolean;
     last?: boolean;
+    numberOfElements?: number;
     empty?: boolean;
 };
 

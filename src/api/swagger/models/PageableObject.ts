@@ -7,8 +7,8 @@ export type PageableObject = {
     offset?: number;
     sort?: SortObject;
     paged?: boolean;
+    unpaged?: boolean;
     pageSize?: number;
     pageNumber?: number;
-    unpaged?: boolean;
 };
 

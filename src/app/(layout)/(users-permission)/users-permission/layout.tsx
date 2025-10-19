@@ -6,15 +6,14 @@ import { usePathname } from "next/navigation";
 import {
   Menu,
   X,
-  Folder,
-  Home,
-  Upload,
-  Settings,
+  ChevronLeft,
   Search,
   ChevronDown,
   MessageSquare,
   CheckCircle,
   Package,
+  UserPlus,
+  UserPen,
 } from "lucide-react";
 import { Breadcrumb, NavSection, NavList } from "@/components/dashboard";
 
@@ -25,8 +24,10 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
   // Primary nav
   const nav = useMemo(
     () => [
-      { href: "/", label: "Tổng quan", icon: Home },
-      { href: "/users-permission/invite-member", label: "Invite New User", icon: Upload },
+      { href: "/", label: "Quay lại tổng quan", icon: ChevronLeft },
+      { href: "/users-permission/invite-member", label: "Invite New User", icon: UserPlus },
+      { href: "/users-permission/manager", label: "Users & Permission ", icon: UserPen },
+
     ],
     []
   );

@@ -9,7 +9,6 @@ import {
   SortingState,
   useReactTable,
 } from "@tanstack/react-table"
-
 import {
   Table,
   TableBody,
@@ -37,9 +36,9 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 
-// 👇 TData phải có id để map link/hành động
 interface HasId {
-  id: string | number
+  id?: string | number
+  transactionId?: string
 }
 
 export interface ActionItem<TData extends HasId> {
@@ -57,39 +56,51 @@ export interface ToolbarAction {
   onClick?: () => void
 }
 
+export interface SpringPage<T> {
+  content: T[]
+  totalElements: number
+  totalPages: number
+  number: number
+  size: number
+  first: boolean
+  last: boolean
+  numberOfElements: number
+  empty: boolean
+}
+
 export interface DataTableProps<TData extends HasId, TValue> {
   columns: ColumnDef<TData, TValue>[]
-  data: TData[]
-  total: number
-  pageSize: number
-  pageIndex: number
-  onPageChange: (page: number) => void
+  pageData: SpringPage<TData>
   withCheckbox?: boolean
   actions?: ActionItem<TData>[]
-  // search + actions
   searchValue: string
   onSearchChange: (value: string) => void
   toolbarActions?: ToolbarAction[]
   onSelectionChange?: (rows: TData[]) => void
+  onPageChange: (page: number) => void
+  /** callback khi click vào 1 dòng */
+  onRowClick?: (row: TData) => void
 }
 
 export function DataTable<TData extends HasId, TValue>({
   columns,
-  data,
-  total,
-  pageSize,
-  pageIndex,
-  onPageChange,
+  pageData,
   withCheckbox = false,
   actions = [],
   searchValue,
   onSearchChange,
   toolbarActions = [],
   onSelectionChange,
+  onPageChange,
+  onRowClick,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([])
 
-  // 🔎 lọc client-side theo searchValue
+  const data = pageData?.content ?? []
+  const totalPages = pageData?.totalPages ?? 1
+  const pageIndex = pageData?.number ?? 0
+  const pageSize = pageData?.size ?? 10
+
   const filteredData = React.useMemo(() => {
     if (!searchValue) return data
     const lower = searchValue.toLowerCase()
@@ -105,22 +116,25 @@ export function DataTable<TData extends HasId, TValue>({
     columns,
     state: { sorting, pagination: { pageIndex, pageSize } },
     onSortingChange: setSorting,
-    pageCount: Math.ceil(total / pageSize),
-    manualPagination: true,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
+    manualPagination: true,
+    pageCount: totalPages,
   })
 
-  // thông báo selection ra ngoài
+  // Gửi danh sách hàng được chọn ra ngoài
   React.useEffect(() => {
-    onSelectionChange?.(
-      table.getSelectedRowModel().rows.map((r) => r.original)
-    )
+    onSelectionChange?.(table.getSelectedRowModel().rows.map((r) => r.original))
   }, [table.getSelectedRowModel().rows, onSelectionChange])
+
+  // 🧹 Reset checkbox khi dữ liệu thay đổi (reload, xóa, thêm)
+  React.useEffect(() => {
+    table.resetRowSelection()
+  }, [pageData.content])
 
   return (
     <div className="space-y-4">
-      {/* 🔎 Search + Actions */}
+      {/* 🔎 Thanh tìm kiếm + Toolbar actions */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="relative flex-1 max-w-xl">
           <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 opacity-70 pointer-events-none" />
@@ -165,7 +179,7 @@ export function DataTable<TData extends HasId, TValue>({
         </div>
       </div>
 
-      {/* Table */}
+      {/* 📋 Table */}
       <div className="overflow-hidden rounded-md border">
         <Table>
           <TableHeader>
@@ -179,6 +193,7 @@ export function DataTable<TData extends HasId, TValue>({
                         table.toggleAllPageRowsSelected(!!value)
                       }
                       aria-label="Select all rows"
+                      onClick={(e) => e.stopPropagation()}
                     />
                   </TableHead>
                 )}
@@ -215,9 +230,15 @@ export function DataTable<TData extends HasId, TValue>({
                 <TableRow
                   key={row.id}
                   data-state={row.getIsSelected() && "selected"}
+                  onClick={() => onRowClick?.(row.original)}
+                  className={
+                    onRowClick
+                      ? "cursor-pointer hover:bg-muted/50 transition"
+                      : undefined
+                  }
                 >
                   {withCheckbox && (
-                    <TableCell>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
                       <Checkbox
                         checked={row.getIsSelected()}
                         onCheckedChange={(value) =>
@@ -227,13 +248,11 @@ export function DataTable<TData extends HasId, TValue>({
                       />
                     </TableCell>
                   )}
-
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </TableCell>
                   ))}
-
                   {actions.length > 0 && (
                     <TableCell className="text-right">
                       <DropdownMenu>
@@ -242,6 +261,7 @@ export function DataTable<TData extends HasId, TValue>({
                             variant="ghost"
                             size="sm"
                             aria-label="Row actions"
+                            onClick={(e) => e.stopPropagation()}
                           >
                             <MoreHorizontal className="h-4 w-4" />
                           </Button>
@@ -252,11 +272,11 @@ export function DataTable<TData extends HasId, TValue>({
                               action.variant === "destructive"
                                 ? "text-red-600"
                                 : ""
+                            const id =
+                              (row.original.id as string) ||
+                              (row.original.transactionId as string)
                             if (action.href) {
-                              const href = action.href.replace(
-                                ":id",
-                                String(row.original.id)
-                              )
+                              const href = action.href.replace(":id", id)
                               return (
                                 <DropdownMenuItem key={idx} asChild>
                                   <Link href={href} className={variantCls}>
@@ -299,17 +319,17 @@ export function DataTable<TData extends HasId, TValue>({
         </Table>
       </div>
 
-      {/* Pagination */}
+      {/* 📑 Pagination */}
       <div className="flex items-center justify-between">
         <div className="text-sm text-muted-foreground">
-          Page {pageIndex + 1} of {table.getPageCount()}
+          Page {pageIndex + 1} of {totalPages}
         </div>
         <div className="space-x-2">
           <Button
             variant="outline"
             size="sm"
             onClick={() => onPageChange(pageIndex - 1)}
-            disabled={pageIndex <= 0}
+            disabled={pageData.first}
           >
             <ChevronLeft />
           </Button>
@@ -317,7 +337,7 @@ export function DataTable<TData extends HasId, TValue>({
             variant="outline"
             size="sm"
             onClick={() => onPageChange(pageIndex + 1)}
-            disabled={pageIndex + 1 >= table.getPageCount()}
+            disabled={pageData.last}
           >
             <ChevronRight />
           </Button>

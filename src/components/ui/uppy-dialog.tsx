@@ -13,11 +13,11 @@ import {
 } from "@/components/ui/dialog"
 import { Upload } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { createattachmentService } from "@/services/erp-1/createattachment.service"
-import { attachmentsRequest } from "@/types/erp-1/attachmentsRequest"
-
+import api from "@/lib/axios"
+import type { attachmentsRequest } from "@/types/erp-1/attachmentsRequest"
 import "@uppy/core/dist/style.min.css"
 import "@uppy/dashboard/dist/style.min.css"
+import { toast } from "sonner"
 
 /** 🔹 Helper gọi API backend an toàn */
 const fetchUploadApiEndpoint = async (endpoint: string, data: object) => {
@@ -47,6 +47,7 @@ export function UppyDialog({
   const [isUploading, setIsUploading] = useState(false)
   const [open, setOpen] = useState(false)
 
+  // ✅ Tạo instance Uppy
   const uppy = useMemo(() => {
     const instance = new Uppy({
       autoProceed: false,
@@ -81,7 +82,6 @@ export function UppyDialog({
           uploaded_at: response.uploaded_at ?? new Date().toISOString(),
         }
 
-        console.log("✅ Upload complete:", formatted)
         return formatted
       },
       async abortMultipartUpload(_file, props) {
@@ -92,16 +92,10 @@ export function UppyDialog({
     return instance
   }, [])
 
-  /** 🔹 Log khi thêm file */
+  /** 🔹 Khi thêm file */
   useEffect(() => {
     const handleFileAdded = (file: UppyFile) => {
-      console.log("📎 File vừa được thêm vào:")
-      console.table({
-        id: file.id,
-        name: file.name,
-        type: file.type,
-        size: `${((file.size ?? 0) / 1024 / 1024).toFixed(2)} MB`,
-      })
+      console.log("📎 File được thêm:", file.name)
     }
     uppy.on("file-added", handleFileAdded)
     return () => {
@@ -111,27 +105,57 @@ export function UppyDialog({
 
   /** 🔹 Khi upload hoàn tất */
   useEffect(() => {
-    const handleComplete = (result: UploadResult) => {
+    const handleComplete = async (result: UploadResult) => {
       setIsUploading(false)
+
       const uploadedFiles = result.successful.map(
         (s) => s.response?.body
       ) as attachmentsRequest[]
+
       if (!uploadedFiles?.length) return
 
-      console.log("✅ Danh sách file đã upload:", uploadedFiles)
+      console.log("✅ Upload thành công:", uploadedFiles)
+      toast.success(`Upload thành công ${uploadedFiles.length} tệp!`)
+
+      // ✅ Gửi callback về component cha
       onUploadSuccess(uploadedFiles)
 
-      // Lưu từng file vào ERP-1
-      uploadedFiles.forEach((file) => {
-        createattachmentService
-          .create(file)
-          .then((res) => {
-            console.log(`✅ Đã lưu ${file.file_name} vào ERP-1:`, res)
-          })
-          .catch((err) => {
-            console.error(`❌ Lỗi khi lưu ${file.file_name}:`, err)
-          })
-      })
+      // ✅ Gửi danh sách lên backend
+      try {
+        await api.post("/api/attachments/list", uploadedFiles)
+        toast.success(`Đã lưu ${uploadedFiles.length} tệp vào hệ thống!`)
+
+        // 🔹 Thay vì uppy.reset(), ta tự xoá file và reset tiến trình
+        try {
+          // Hủy upload còn lại nếu có
+          if (typeof (uppy as any).cancelAll === "function") {
+            uppy.cancelAll()
+          }
+
+          // Xóa tất cả file khỏi Dashboard
+          const fileIds = uppy.getFiles().map((f) => f.id)
+          if (fileIds.length > 0) {
+            if (typeof (uppy as any).removeFiles === "function") {
+              ;(uppy as any).removeFiles(fileIds)
+            } else {
+              fileIds.forEach((id) => uppy.removeFile(id))
+            }
+          }
+
+          // Reset tiến trình (để progress bar về 0)
+          if (typeof (uppy as any).resetProgress === "function") {
+            uppy.resetProgress()
+          }
+        } catch (resetErr) {
+          console.warn("⚠️ Lỗi khi reset Uppy:", resetErr)
+        }
+
+        // ✅ Đóng dialog sau 1 giây
+        setTimeout(() => setOpen(false), 1000)
+      } catch (err) {
+        console.error("❌ Lỗi khi lưu danh sách file:", err)
+        toast.error("Không thể lưu danh sách file vào ERP-1")
+      }
     }
 
     uppy.on("complete", handleComplete)
@@ -148,16 +172,7 @@ export function UppyDialog({
       return
     }
 
-    console.log("📂 File(s) đang chờ upload:")
-    console.table(
-      files.map((f) => ({
-        id: f.id,
-        name: f.name,
-        type: f.type,
-        size: `${((f.size ?? 0) / 1024 / 1024).toFixed(2)} MB`,
-      }))
-    )
-
+    console.log("📂 File(s) đang chờ upload:", files.map((f) => f.name))
     setIsUploading(true)
     uppy.upload().catch((err) => {
       console.error("❌ Lỗi upload:", err)
@@ -169,13 +184,15 @@ export function UppyDialog({
     <Dialog open={open} onOpenChange={setOpen}>
       {/* 🔹 Nút mở dialog */}
       <DialogTrigger asChild>
-        <Button variant="outline"><Upload /> Upload Attachments</Button>
+        <Button variant="outline">
+          <Upload className="mr-2 h-4 w-4" /> Tải lên tệp đính kèm
+        </Button>
       </DialogTrigger>
 
       {/* 🔹 Nội dung Dialog */}
       <DialogContent className="max-w-4xl">
         <DialogHeader>
-          <DialogTitle>Upload file lên Cloudflare R2</DialogTitle>
+          <DialogTitle>Cloudflare R2 Bucket</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">

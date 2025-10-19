@@ -110,22 +110,6 @@ export class PartnersControllerService {
         });
     }
     /**
-     * @param name
-     * @returns Partners OK
-     * @throws ApiError
-     */
-    public static searchPartnersByName(
-        name: string,
-    ): CancelablePromise<Array<Partners>> {
-        return __request(OpenAPI, {
-            method: 'GET',
-            url: '/api/partners/search',
-            query: {
-                'name': name,
-            },
-        });
-    }
-    /**
      * @returns Partners OK
      * @throws ApiError
      */

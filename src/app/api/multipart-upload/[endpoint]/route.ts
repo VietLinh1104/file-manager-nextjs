@@ -135,6 +135,28 @@ export async function POST(request: Request, context: { params: { endpoint: stri
         return NextResponse.json({ success: true })
       }
 
+      case 'delete-file': {
+        const { key } = await readJson<{ key: string }>(request)
+
+        if (!key) {
+          return NextResponse.json({ error: 'Missing key' }, { status: 400 })
+        }
+
+        try {
+          // Dùng DeleteObjectCommand để xóa file
+          const { DeleteObjectCommand } = await import('@aws-sdk/client-s3')
+          const cmd = new DeleteObjectCommand({
+            Bucket: R2_BUCKET_NAME,
+            Key: key,
+          })
+          await s3.send(cmd)
+          return NextResponse.json({ success: true, key })
+        } catch (error) {
+          console.error('❌ Lỗi khi xóa file:', error)
+          return NextResponse.json({ error: 'Không thể xóa file trên R2' }, { status: 500 })
+        }
+      }
+
       // 🧩 Endpoint không hợp lệ
       default:
         return NextResponse.json({ error: 'Endpoint not found' }, { status: 404 })

@@ -5,4 +5,5 @@ export interface attachmentsRequest {
   file_size?: number;
   uploaded_at?: Date;
   file_name?: string;
+  attachmentId?: string;
 }

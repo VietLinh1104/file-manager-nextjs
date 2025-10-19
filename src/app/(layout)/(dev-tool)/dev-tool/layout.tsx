@@ -3,7 +3,7 @@
 import React, { useState, PropsWithChildren, useMemo } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, X,  Home,  Search, ChevronDown, Braces, Waypoints ,Table2 ,TextCursorInput ,FileType  } from "lucide-react";
+import { Menu, X,  ChevronLeft,  Search, ChevronDown, Braces, Waypoints ,Table2 ,TextCursorInput ,FileType  } from "lucide-react";
 import { Breadcrumb, NavSection, NavList } from "@/components/dashboard";
 
 /**
@@ -19,7 +19,7 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
   // Define primary nav here (you can extend from your CMS or constants later)
   const nav = useMemo(
       () => [
-        { href: "/", label: "Tổng quan", icon: Home },
+        { href: "/", label: "Quay lại tổng quan", icon: ChevronLeft },
         { href: "/dev-tool/data-type", label: "Data Type", icon: FileType },
         { href: "/dev-tool/api-service", label: "API Service", icon: Waypoints },
         { href: "/dev-tool/form-builder", label: "Form Builder", icon: TextCursorInput },

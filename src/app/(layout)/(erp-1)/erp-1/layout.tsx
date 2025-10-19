@@ -14,8 +14,15 @@ import {
   MessageSquare,
   CheckCircle,
   Package,
+  WalletCards,
+  ChevronLeft,
+  FileUp,
+  Archive,
+  Handshake,
+  Signature,
 } from "lucide-react";
 import { Breadcrumb, NavSection, NavList } from "@/components/dashboard";
+
 
 export default function DashboardLayout({ children }: PropsWithChildren) {
   const [open, setOpen] = useState(false); // mobile sidebar
@@ -24,10 +31,12 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
   // Primary nav
   const nav = useMemo(
     () => [
-      { href: "/", label: "Tổng quan", icon: Home },
-      { href: "/erp-1/data-table", label: "Data Table", icon: Folder },
-      { href: "/erp-1/data-table2", label: "Data Table 2", icon: Upload },
-      { href: "/erp-1/giao-dich", label: "Giao Dịch", icon: Folder },
+      { href: "/", label: "Quay lại tổng quan", icon: ChevronLeft },
+      { href: "/erp-1/transactions", label: "Giao Dịch", icon: WalletCards },
+      { href: "/erp-1/contracts", label: "Hợp đồng", icon: Signature },
+      { href: "/erp-1/partners", label: "Đối tác", icon: Handshake },
+      { href: "/erp-1/assets", label: "Tài sản", icon: Archive },
+      { href: "/erp-1/attachments", label: "Tài liệu", icon: FileUp },
     ],[]
   );
 
