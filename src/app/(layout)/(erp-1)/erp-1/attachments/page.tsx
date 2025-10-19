@@ -46,9 +46,24 @@ export const columns: ColumnDef<Attachments>[] = [
     header: "Key",
     cell: ({ row }) => {
       const val = row.getValue("key") as string
+      if (!val) return ""
+
+      // ✂️ Rút gọn key để hiển thị gọn gàng
+      const shortKey =
+        val.length > 50
+          ? `${val.slice(0, 20)}...${val.slice(-6)}`
+          : val
+
       return (
-        <span className="px-2 py-1 rounded bg-blue-100 text-blue-700 text-xs">
-          {val}
+        <span
+          className="px-2 py-1 rounded bg-blue-100 text-blue-700 text-xs font-mono cursor-pointer hover:bg-blue-200 transition"
+          title={`Click để sao chép\n${val}`}
+          onClick={() => {
+            navigator.clipboard.writeText(val)
+            toast.success("✅ Đã sao chép key vào clipboard")
+          }}
+        >
+          {shortKey}
         </span>
       )
     },
@@ -77,7 +92,7 @@ export default function AttachmentsListTable() {
   // 🔹 Lấy danh sách file
   const getAttachments = useCallback(async (page: number, size: number, search?: string) => {
     try {
-		toast.loading("Đang tải dữ liệu...")
+      toast.loading("Đang tải dữ liệu...")
       const res = await api.get("/api/attachments", {
         params: { page, size, search: search || "" },
       })
@@ -86,75 +101,81 @@ export default function AttachmentsListTable() {
       console.error("❌ Lỗi khi tải tệp:", err)
       toast.error("Không thể tải danh sách tệp")
     } finally {
-		toast.dismiss()
-	}
+      toast.dismiss()
+    }
   }, [])
 
   // 🔹 Xoá danh sách trong DB và trên R2
-  const deleteListAttachments = useCallback(async (attachments: Attachments[]) => {
-    const ids = attachments.map((a) => a.attachmentId)
-    const keys = attachments
-      .map((a) => a.key)
-      .filter((k): k is string => typeof k === "string") // ✅ fix type-safe
+  const deleteListAttachments = useCallback(
+    async (attachments: Attachments[]) => {
+      const ids = attachments.map((a) => a.attachmentId)
+      const keys = attachments
+        .map((a) => a.key)
+        .filter((k): k is string => typeof k === "string")
 
-    if (ids.length === 0) {
-      toast.info("Không có tệp nào được chọn để xóa")
-      return
-    }
-
-    try {
-      toast.loading("Đang xóa tệp...")
-
-      // 🗑️ 1️⃣ Xóa trong DB
-      await api.delete("/api/attachments/batch-delete", { data: ids })
-
-      // ☁️ 2️⃣ Xóa file thật trên R2
-      if (keys.length > 0) {
-        const res = await r2Fetch<DeleteListResponse, { keys: string[] }>("delete-list", {
-          body: { keys },
-        })
-        if (res.errors && res.errors.length > 0) {
-          console.warn("⚠️ Một số file không xóa được:", res.errors)
-        }
+      if (ids.length === 0) {
+        toast.info("Không có tệp nào được chọn để xóa")
+        return
       }
 
-      toast.success(`Đã xóa ${ids.length} tệp đính kèm`)
-      await getAttachments(pageIndex, pageSize, debouncedSearch)
-    } catch (err) {
-      console.error("❌ Lỗi khi xóa danh sách:", err)
-      toast.error("Không thể xóa các tệp đính kèm đã chọn")
-    } finally {
-      toast.dismiss()
-    }
-  }, [getAttachments, pageIndex, pageSize, debouncedSearch])
+      try {
+        toast.loading("Đang xóa tệp...")
+
+        // 🗑️ 1️⃣ Xóa trong DB
+        await api.delete("/api/attachments/batch-delete", { data: ids })
+
+        // ☁️ 2️⃣ Xóa file thật trên R2
+        if (keys.length > 0) {
+          const res = await r2Fetch<DeleteListResponse, { keys: string[] }>(
+            "delete-list",
+            { body: { keys } }
+          )
+          if (res.errors && res.errors.length > 0) {
+            console.warn("⚠️ Một số file không xóa được:", res.errors)
+          }
+        }
+
+        toast.success(`Đã xóa ${ids.length} tệp đính kèm`)
+        await getAttachments(pageIndex, pageSize, debouncedSearch)
+      } catch (err) {
+        console.error("❌ Lỗi khi xóa danh sách:", err)
+        toast.error("Không thể xóa các tệp đính kèm đã chọn")
+      } finally {
+        toast.dismiss()
+      }
+    },
+    [getAttachments, pageIndex, pageSize, debouncedSearch]
+  )
 
   // 🔹 Xoá 1 item trong DB và trên R2
-  const deleteAttachment = useCallback(async (item: Attachments) => {
-    try {
-      toast.loading("Đang xóa tệp...")
+  const deleteAttachment = useCallback(
+    async (item: Attachments) => {
+      try {
+        toast.loading("Đang xóa tệp...")
 
-      // 🗑️ Xóa DB
-      await api.delete(`/api/attachments/${item.attachmentId}`)
+        // 🗑️ Xóa DB
+        await api.delete(`/api/attachments/${item.attachmentId}`)
 
-      // ☁️ Xóa thật trên R2
-      if (item.key) {
-        const res = await r2Fetch<DeleteFileResponse, { key: string }>("delete-file", {
-          body: { key: item.key },
-        })
-        if (res.success) {
-          console.log("☁️ Đã xóa R2:", res.key)
+        // ☁️ Xóa thật trên R2
+        if (item.key) {
+          const res = await r2Fetch<DeleteFileResponse, { key: string }>(
+            "delete-file",
+            { body: { key: item.key } }
+          )
+          if (res.success) console.log("☁️ Đã xóa R2:", res.key)
         }
-      }
 
-      toast.success(`Đã xóa tệp: ${item.fileName}`)
-      await getAttachments(pageIndex, pageSize, debouncedSearch)
-    } catch (err) {
-      console.error("❌ Lỗi khi xóa tệp:", err)
-      toast.error(`Không thể xóa tệp: ${item.fileName}`)
-    } finally {
-      toast.dismiss()
-    }
-  }, [getAttachments, pageIndex, pageSize, debouncedSearch])
+        toast.success(`Đã xóa tệp: ${item.fileName}`)
+        await getAttachments(pageIndex, pageSize, debouncedSearch)
+      } catch (err) {
+        console.error("❌ Lỗi khi xóa tệp:", err)
+        toast.error(`Không thể xóa tệp: ${item.fileName}`)
+      } finally {
+        toast.dismiss()
+      }
+    },
+    [getAttachments, pageIndex, pageSize, debouncedSearch]
+  )
 
   // 🔹 Debounce tìm kiếm
   useEffect(() => {
@@ -165,7 +186,9 @@ export default function AttachmentsListTable() {
   // 🔹 Load dữ liệu
   useEffect(() => {
     setLoading(true)
-    getAttachments(pageIndex, pageSize, debouncedSearch).finally(() => setLoading(false))
+    getAttachments(pageIndex, pageSize, debouncedSearch).finally(() =>
+      setLoading(false)
+    )
   }, [getAttachments, pageIndex, pageSize, debouncedSearch])
 
   // 🔹 Xử lý hành động xóa nhiều

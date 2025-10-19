@@ -23,6 +23,9 @@ export default function GeneratedFormPage() {
 			options: [
 				{ value: "056c80ac-d7df-492b-b9f4-35ecea5c3ea7", name: "HPT" },
 				{ value: "08b737d0-0f75-4ea3-8a7b-a11afc2b5a65", name: "Apple" },
+				{ value: "4b1c6821-584d-4241-94cb-859a8d6817cf", name: "BIDV" },
+				{ value: "585fb484-34b2-41a1-ab75-b741f0394673", name: "Vietinbank" },
+				{ value: "da331d8d-b414-4432-9048-92023c5c10df", name: "CMC" }
 			],
 		},
 		{
@@ -32,8 +35,13 @@ export default function GeneratedFormPage() {
 			required: true,
 			colSpan: 1,
 			options: [
-				{ value: "19cdf939-332c-4c7e-9568-331b4f9b0712", name: "Mua hàng" },
-				{ value: "c7226eb3-5e4b-4566-a7f1-7600e2c491bd", name: "Bán hàng" },
+				{ value: "18b29111-5ff0-448b-b087-f29c87805514", name: "Marketing" },
+				{ value: "2912000d-c1d8-48b2-a898-dbb847db8f59", name: "Salaries" },
+				{ value: "46ef850f-3c3e-4ad2-b933-cf7d8a0f310c", name: "Consulting Income" },
+				{ value: "551c73df-34d1-46ef-8e21-71efbd8f1180", name: "Office Supplies" },
+				{ value: "a3041541-5206-4b3a-9aa4-6b85c10db605", name: "Utilities" },
+				{ value: "aedc59d3-2723-49e6-9bcf-cedaafbc403a", name: "Sales Revenue" },
+				{ value: "d98b23f5-0b71-4822-9806-c86427054215", name: "Maintenance" }
 			],
 		},
 		{
