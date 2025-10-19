@@ -83,6 +83,7 @@ export default function TransactionListTable() {
 	//#region Gọi API
 	async function getTransactions(page: number, size: number, search?: string) {
 		try {
+			toast.loading("Đang tải dữ liệu...")
 			const res = await api.get("/api/transactions", {
 				params: {
 					page, // ⚠️ Nếu backend Spring 1-based → dùng page + 1
@@ -95,6 +96,8 @@ export default function TransactionListTable() {
 		} catch (err) {
 			console.error("❌ Lỗi khi load giao dịch:", err)
 			toast.error("Không thể tải dữ liệu giao dịch")
+		} finally {
+			toast.dismiss()
 		}
 	}
 

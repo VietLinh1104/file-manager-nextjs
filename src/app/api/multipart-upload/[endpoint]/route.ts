@@ -1,3 +1,4 @@
+// src/app/api/multipart-upload/[endpoint]/route.ts
 import { NextResponse } from 'next/server'
 import {
   S3Client,
@@ -6,6 +7,8 @@ import {
   CompleteMultipartUploadCommand,
   AbortMultipartUploadCommand,
   ListPartsCommand,
+  DeleteObjectCommand,
+  DeleteObjectsCommand,
   type CompletedPart,
 } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
@@ -47,22 +50,18 @@ export async function POST(request: Request, context: { params: { endpoint: stri
     switch (endpoint) {
       // 🧩 1️⃣ Tạo multipart upload
       case 'create-multipart-upload': {
-        // 🪄 FIX: Nhận đúng field từ frontend (fileName, contentType)
         const { fileName, contentType } = await readJson<{ fileName: string; contentType: string }>(request)
 
         if (!fileName) {
           return NextResponse.json({ error: 'Missing fileName' }, { status: 400 })
         }
 
-        // Tạo key chuẩn không còn “undefined”
         const key = `resources/${Date.now()}-${fileName}`
-
         const cmd = new CreateMultipartUploadCommand({
           Bucket: R2_BUCKET_NAME,
           Key: key,
           ContentType: contentType ?? 'application/octet-stream',
         })
-
         const resp = await s3.send(cmd)
         return NextResponse.json({
           uploadId: resp.UploadId,
@@ -110,10 +109,7 @@ export async function POST(request: Request, context: { params: { endpoint: stri
           MultipartUpload: { Parts: parts },
         })
 
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const resp = await s3.send(cmd)
-
-        // ⚙️ Chuẩn hóa dữ liệu trả về frontend
+        await s3.send(cmd)
         return NextResponse.json({
           success: true,
           key,
@@ -135,29 +131,44 @@ export async function POST(request: Request, context: { params: { endpoint: stri
         return NextResponse.json({ success: true })
       }
 
+      // 🧩 6️⃣ Xóa 1 file
       case 'delete-file': {
         const { key } = await readJson<{ key: string }>(request)
+        if (!key) return NextResponse.json({ error: 'Missing key' }, { status: 400 })
 
-        if (!key) {
-          return NextResponse.json({ error: 'Missing key' }, { status: 400 })
-        }
-
-        try {
-          // Dùng DeleteObjectCommand để xóa file
-          const { DeleteObjectCommand } = await import('@aws-sdk/client-s3')
-          const cmd = new DeleteObjectCommand({
-            Bucket: R2_BUCKET_NAME,
-            Key: key,
-          })
-          await s3.send(cmd)
-          return NextResponse.json({ success: true, key })
-        } catch (error) {
-          console.error('❌ Lỗi khi xóa file:', error)
-          return NextResponse.json({ error: 'Không thể xóa file trên R2' }, { status: 500 })
-        }
+        const cmd = new DeleteObjectCommand({
+          Bucket: R2_BUCKET_NAME,
+          Key: key,
+        })
+        await s3.send(cmd)
+        return NextResponse.json({ success: true, key })
       }
 
-      // 🧩 Endpoint không hợp lệ
+      // 🧩 7️⃣ Xóa nhiều file cùng lúc
+      case 'delete-list': {
+        const { keys } = await readJson<{ keys: string[] }>(request)
+
+        if (!keys || keys.length === 0) {
+          return NextResponse.json({ error: 'Missing keys array' }, { status: 400 })
+        }
+
+        const cmd = new DeleteObjectsCommand({
+          Bucket: R2_BUCKET_NAME,
+          Delete: {
+            Objects: keys.map((key) => ({ Key: key })),
+            Quiet: false,
+          },
+        })
+
+        const resp = await s3.send(cmd)
+        return NextResponse.json({
+          success: true,
+          deleted: resp.Deleted ?? [],
+          errors: resp.Errors ?? [],
+        })
+      }
+
+      // ❌ Endpoint không tồn tại
       default:
         return NextResponse.json({ error: 'Endpoint not found' }, { status: 404 })
     }

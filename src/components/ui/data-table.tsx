@@ -39,6 +39,7 @@ import { Input } from "@/components/ui/input"
 interface HasId {
   id?: string | number
   transactionId?: string
+  attachmentId?: string
 }
 
 export interface ActionItem<TData extends HasId> {
@@ -288,7 +289,12 @@ export function DataTable<TData extends HasId, TValue>({
                             return (
                               <DropdownMenuItem
                                 key={idx}
-                                onClick={() => action.onClick?.(row.original)}
+                                onClick={(e) => {
+                                  e.stopPropagation() // 🛑 Ngăn click lan ra TableRow
+                                  setTimeout(() => {
+                                    action.onClick?.(row.original)
+                                  }, 0)
+                                }}
                                 className={variantCls}
                               >
                                 {action.label}

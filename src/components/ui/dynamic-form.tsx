@@ -3,7 +3,6 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { toast } from "sonner"
-import api from "@/lib/axios"
 import {
   Form,
   FormControl,
@@ -200,52 +199,33 @@ export function DynamicForm({
                     <FormLabel>{field.label}</FormLabel>
                     <FormControl>
                       {field.type === "file" ? (
-                        <div className="flex flex-col gap-2">
-                          {readOnly ? (
-                            <AttachmentList
-                              files={(rhfField.value as Attachments[]) ?? []}
-                              readOnly
-                            />
-                          ) : (
-                            <>
-                              {/* ✅ Upload xử lý trong UppyDialog */}
-                              <UppyDialog
-                                onUploadSuccess={(uploadedFiles: attachmentsRequest[]) => {
-                                  form.setValue(field.id, uploadedFiles)
-                                  console.log("📦 Đã nhận file từ Uppy:", uploadedFiles)
-                                }}
-                              />
+                              <div className="flex flex-col gap-2">
+                                {/* Nếu readonly thì hiển thị danh sách file */}
+                                {readOnly ? (
+                                  <AttachmentList files={rhfField.value as Attachments[]} readOnly />
+                                ) : (
+                                  <>
+                                    {/* Upload file */}
+                                    <UppyDialog
+                                      onUploadSuccess={(uploadedFiles) => {
+                                        // 🟢 Gộp file mới với danh sách hiện tại
+                                        const current = (rhfField.value as Attachments[]) ?? []
+                                        const merged = [...current, ...uploadedFiles]
+                                        form.setValue(field.id, merged, { shouldDirty: true })
+                                      }}
+                                    />
 
-                              {/* ✅ Hiển thị danh sách file đã upload */}
-                              <AttachmentList
-                                files={(rhfField.value as Attachments[]) ?? []}
-                                // onRemove={(idx) => {
-                                //   const newList = (rhfField.value as attachmentsRequest[]).filter(
-                                //     (_, i) => i !== idx
-                                //   )
-                                //   form.setValue(field.id, newList)
-                                // }}
-                            //     onDeleteServer={async (attachmentId) => {
-                            //       try {
-                            //         await api.delete(`/api/attachments/${attachmentId}`)
-                            //         const newList = (rhfField.value as attachmentsRequest[]).filter(
-                            //           (f: Attachments) =>
-                            //             f.attachmentId !== attachmentId &&
-                            //             f.attachmentId !== attachmentId
-                            //         )
-                            //         form.setValue(field.id, newList)
-                            //         toast.success("Đã xóa tệp thành công")
-                            //       } catch (err) {
-                            //         console.error("❌ Lỗi khi xóa file:", err)
-                            //         toast.error("Không thể xóa tệp. Vui lòng thử lại.")
-                            //       }
-                            //     }
-							// }
-                              />
-                            </>
-                          )}
-                        </div>
-                      ) : field.type === "textarea" ? (
+                                    {/* Danh sách file có thể xóa */}
+                                    <AttachmentList
+                                      files={(rhfField.value as Attachments[]) ?? []}
+                                      onChange={(newFiles) => {
+                                        form.setValue(field.id, newFiles)
+                                      }}
+                                    />
+                                  </>
+                                )}
+                              </div>
+                            ) : field.type === "textarea" ? (
                         <Textarea
                           placeholder={field.placeholder}
                           {...rhfField}
@@ -361,11 +341,11 @@ export function DynamicForm({
               Hủy
             </Button>
             <Button 
-				type="submit" 
-				disabled={isSubmitting || !form.formState.isDirty}
-				>
-				Lưu
-			</Button>
+              type="submit" 
+              disabled={isSubmitting || !form.formState.isDirty}
+              >
+              Lưu
+            </Button>
           </div>
         )}
       </form>

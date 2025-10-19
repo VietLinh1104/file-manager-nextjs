@@ -19,7 +19,7 @@ import "@uppy/core/dist/style.min.css"
 import "@uppy/dashboard/dist/style.min.css"
 import { toast } from "sonner"
 
-/** 🔹 Helper gọi API backend an toàn */
+/** 🔹 Gọi API backend an toàn */
 const fetchUploadApiEndpoint = async (endpoint: string, data: object) => {
   const res = await fetch(`/api/multipart-upload/${endpoint}`, {
     method: "POST",
@@ -47,7 +47,7 @@ export function UppyDialog({
   const [isUploading, setIsUploading] = useState(false)
   const [open, setOpen] = useState(false)
 
-  // ✅ Tạo instance Uppy
+  /** ✅ Khởi tạo Uppy */
   const uppy = useMemo(() => {
     const instance = new Uppy({
       autoProceed: false,
@@ -68,21 +68,7 @@ export function UppyDialog({
         return fetchUploadApiEndpoint("list-parts", props)
       },
       async completeMultipartUpload(file: UppyFile, props) {
-        const response = await fetchUploadApiEndpoint(
-          "complete-multipart-upload",
-          props
-        )
-
-        const formatted: attachmentsRequest = {
-          file_name: response.file_name ?? file.name,
-          file_type: file.type ?? "unknown",
-          file_path: response.url,
-          key: response.key,
-          file_size: file.size ?? 0,
-          uploaded_at: response.uploaded_at ?? new Date().toISOString(),
-        }
-
-        return formatted
+        return fetchUploadApiEndpoint("complete-multipart-upload", props)
       },
       async abortMultipartUpload(_file, props) {
         return fetchUploadApiEndpoint("abort-multipart-upload", props)
@@ -92,87 +78,76 @@ export function UppyDialog({
     return instance
   }, [])
 
-  /** 🔹 Khi thêm file */
-  useEffect(() => {
-    const handleFileAdded = (file: UppyFile) => {
-      console.log("📎 File được thêm:", file.name)
-    }
-    uppy.on("file-added", handleFileAdded)
-    return () => {
-      uppy.off("file-added", handleFileAdded)
-    }
-  }, [uppy])
-
   /** 🔹 Khi upload hoàn tất */
   useEffect(() => {
     const handleComplete = async (result: UploadResult) => {
       setIsUploading(false)
 
-      const uploadedFiles = result.successful.map(
-        (s) => s.response?.body
-      ) as attachmentsRequest[]
+      // 🟢 Format dữ liệu từ Uppy response
+      const uploadedFiles = result.successful.map((s) => {
+        const body = s.response?.body || {}
+        return {
+          file_name: body.file_name ?? s.name,
+          file_type: s.type ?? "unknown",
+          file_path: body.url,
+          key: body.key,
+          file_size: s.size ?? 0,
+          uploaded_at: body.uploaded_at ?? new Date().toISOString(),
+        } as attachmentsRequest
+      })
 
       if (!uploadedFiles?.length) return
-
       console.log("✅ Upload thành công:", uploadedFiles)
       toast.success(`Upload thành công ${uploadedFiles.length} tệp!`)
 
-      // ✅ Gửi callback về component cha
-      onUploadSuccess(uploadedFiles)
-
-      // ✅ Gửi danh sách lên backend
+      // 🟢 Gọi API /api/attachments/list để lưu và nhận attachmentId
       try {
-        await api.post("/api/attachments/list", uploadedFiles)
-        toast.success(`Đã lưu ${uploadedFiles.length} tệp vào hệ thống!`)
+        const res = await api.post("/api/attachments/list", uploadedFiles)
+        const savedFiles = res.data.map((f: any) => ({
+          attachmentId: f.attachmentId, // backend trả về
+          fileName: f.fileName,
+          filePath: f.filePath,
+          fileType: f.fileType,
+          fileSize: f.fileSize,
+          uploadedAt: f.uploadedAt,
+        }))
 
-        // 🔹 Thay vì uppy.reset(), ta tự xoá file và reset tiến trình
+        console.log("💾 Lưu DB thành công:", savedFiles)
+        toast.success("Đã lưu tệp vào ERP-1!")
+
+        // 🔹 Trả về cho DynamicForm
+        onUploadSuccess(savedFiles)
+
+        // ✅ Reset Uppy
         try {
-          // Hủy upload còn lại nếu có
-          if (typeof (uppy as any).cancelAll === "function") {
-            uppy.cancelAll()
-          }
-
-          // Xóa tất cả file khỏi Dashboard
+          if (typeof (uppy as any).cancelAll === "function") uppy.cancelAll()
           const fileIds = uppy.getFiles().map((f) => f.id)
-          if (fileIds.length > 0) {
-            if (typeof (uppy as any).removeFiles === "function") {
-              ;(uppy as any).removeFiles(fileIds)
-            } else {
-              fileIds.forEach((id) => uppy.removeFile(id))
-            }
-          }
-
-          // Reset tiến trình (để progress bar về 0)
-          if (typeof (uppy as any).resetProgress === "function") {
-            uppy.resetProgress()
-          }
+          fileIds.forEach((id) => uppy.removeFile(id))
+          if (typeof (uppy as any).resetProgress === "function") uppy.resetProgress()
         } catch (resetErr) {
-          console.warn("⚠️ Lỗi khi reset Uppy:", resetErr)
+          console.warn("⚠️ Lỗi reset:", resetErr)
         }
 
-        // ✅ Đóng dialog sau 1 giây
+        // ✅ Đóng dialog sau 1s
         setTimeout(() => setOpen(false), 1000)
       } catch (err) {
-        console.error("❌ Lỗi khi lưu danh sách file:", err)
+        console.error("❌ Lỗi khi lưu attachments:", err)
         toast.error("Không thể lưu danh sách file vào ERP-1")
       }
     }
 
     uppy.on("complete", handleComplete)
-    return () => {
-      uppy.off("complete", handleComplete)
-    }
+    return () => uppy.off("complete", handleComplete)
   }, [uppy, onUploadSuccess])
 
-  /** 🔹 Khi nhấn nút Upload */
+  /** 🔹 Nút upload */
   const handleUpload = () => {
     const files = uppy.getFiles()
     if (files.length === 0) {
-      alert("⚠️ Vui lòng chọn ít nhất một file trước khi upload.")
+      toast.warning("Vui lòng chọn ít nhất một tệp.")
       return
     }
-
-    console.log("📂 File(s) đang chờ upload:", files.map((f) => f.name))
+    console.log("📂 Bắt đầu upload:", files.map((f) => f.name))
     setIsUploading(true)
     uppy.upload().catch((err) => {
       console.error("❌ Lỗi upload:", err)
@@ -182,17 +157,15 @@ export function UppyDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      {/* 🔹 Nút mở dialog */}
       <DialogTrigger asChild>
         <Button variant="outline">
           <Upload className="mr-2 h-4 w-4" /> Tải lên tệp đính kèm
         </Button>
       </DialogTrigger>
 
-      {/* 🔹 Nội dung Dialog */}
       <DialogContent className="max-w-4xl">
         <DialogHeader>
-          <DialogTitle>Cloudflare R2 Bucket</DialogTitle>
+          <DialogTitle>Upload lên Cloudflare R2</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
