@@ -3,18 +3,30 @@
 import React, { useEffect, useState, useCallback, useMemo } from "react"
 import { DataTable } from "@/components/ui/data-table"
 import { ColumnDef } from "@tanstack/react-table"
-import { Trash, FileDown, Upload } from "lucide-react"
+import { Trash, RefreshCcw, Upload } from "lucide-react"
 import { toast } from "sonner"
 import api from "@/lib/axios"
-import { useRouter } from "next/navigation"
 import { confirmToast } from "@/components/ui/confirm-toast"
 import { Attachments } from "@/api/swagger/models/Attachments"
 import type { SpringPage } from "@/components/ui/data-table"
 import { r2Fetch, DeleteFileResponse, DeleteListResponse } from "@/lib/r2"
+import { UppyDialog } from "@/components/ui/uppy-dialog"
+import { DialogAttachmentInfo } from "@/components/ui/dialog-attachment-info"
+import type { attachmentsRequest } from "@/types/erp-1/attachmentsRequest"
+
+// 🧩 Mở rộng kiểu Attachments để có thông tin entity
+export interface AttachmentWithEntities extends Attachments {
+  attachedEntities?: {
+    entityName?: string
+    entityId?: string
+    attachedAt?: string
+  }[]
+  attached?: boolean
+}
 
 // 🧩 Helper format kích thước
 function formatFileSize(bytes?: number): string {
-  if (bytes == null || isNaN(bytes)) return "0 B"
+  if (!bytes || isNaN(bytes)) return "0 B"
   if (bytes < 1024) return `${bytes} B`
   const units = ["KB", "MB", "GB", "TB"]
   let size = bytes / 1024
@@ -27,7 +39,7 @@ function formatFileSize(bytes?: number): string {
 }
 
 // 🧱 Cột hiển thị
-export const columns: ColumnDef<Attachments>[] = [
+export const columns: ColumnDef<AttachmentWithEntities>[] = [
   {
     accessorKey: "fileName",
     header: "Tên Tệp",
@@ -36,34 +48,7 @@ export const columns: ColumnDef<Attachments>[] = [
   {
     accessorKey: "fileSize",
     header: "Kích thước",
-    cell: ({ row }) => {
-      const val = row.getValue("fileSize") as number
-      return <span>{formatFileSize(val)}</span>
-    },
-  },
-  {
-    accessorKey: "key",
-    header: "Key",
-    cell: ({ row }) => {
-      const val = row.getValue("key") as string
-      if (!val) return ""
-
-      const shortKey =
-        val.length > 50 ? `${val.slice(0, 20)}...${val.slice(-6)}` : val
-
-      return (
-        <span
-          className="px-2 py-1 rounded bg-blue-100 text-blue-700 text-xs font-mono cursor-pointer hover:bg-blue-200 transition"
-          title={`Click để sao chép\n${val}`}
-          onClick={() => {
-            navigator.clipboard.writeText(val)
-            toast.success("Đã sao chép key vào clipboard")
-          }}
-        >
-          {shortKey}
-        </span>
-      )
-    },
+    cell: ({ row }) => <span>{formatFileSize(row.getValue("fileSize") as number)}</span>,
   },
   {
     accessorKey: "uploadedAt",
@@ -73,28 +58,19 @@ export const columns: ColumnDef<Attachments>[] = [
       return val ? new Date(val as Date).toLocaleString() : ""
     },
   },
-  // 🔹 Thêm cột trạng thái (isAttached)
   {
     accessorKey: "attached",
     header: "Trạng thái",
     cell: ({ row }) => {
       const attached = row.getValue("attached") as boolean
       return (
-        <div className="flex items-center gap-1">
-          {attached ? (
-            <>
-              <span className="px-2 py-1 rounded bg-blue-100 text-blue-700 text-xs">
-                Đã liên kết
-              </span>
-            </>
-          ) : (
-            <>
-              <span className="px-2 py-1 rounded bg-gray-100 text-gray-700 text-xs">
-                Chưa liên kết
-              </span>
-            </>
-          )}
-        </div>
+        <span
+          className={`px-2 py-1 rounded text-xs ${
+            attached ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-700"
+          }`}
+        >
+          {attached ? "Đã liên kết" : "Chưa liên kết"}
+        </span>
       )
     },
   },
@@ -102,105 +78,93 @@ export const columns: ColumnDef<Attachments>[] = [
 
 // 🧩 Component chính
 export default function AttachmentsListTable() {
-  const [pageData, setPageData] = useState<SpringPage<Attachments>>()
+  const [pageData, setPageData] = useState<SpringPage<AttachmentWithEntities>>()
   const [pageIndex, setPageIndex] = useState(0)
   const [pageSize] = useState(20)
   const [loading, setLoading] = useState(false)
   const [search, setSearch] = useState("")
   const [debouncedSearch, setDebouncedSearch] = useState("")
-  const [selected, setSelected] = useState<Attachments[]>([])
-  const router = useRouter()
+  const [selected, setSelected] = useState<AttachmentWithEntities[]>([])
+  const [uploadOpen, setUploadOpen] = useState(false)
+  const [selectedFile, setSelectedFile] = useState<AttachmentWithEntities | null>(null)
 
   // 🔹 Lấy danh sách file
-  const getAttachments = useCallback(async (page: number, size: number, search?: string) => {
-    try {
-      toast.loading("Đang tải dữ liệu...")
-      const res = await api.get("/api/attachments/with-entities", {
-        params: { page, size, search: search || "" },
-      })
-      setPageData(res.data)
-    } catch (err) {
-      console.error("❌ Lỗi khi tải tệp:", err)
-      toast.error("Không thể tải danh sách tệp")
-    } finally {
-      toast.dismiss()
-    }
-  }, [])
-
-  // 🔹 Xoá danh sách trong DB và trên R2
-  const deleteListAttachments = useCallback(
-    async (attachments: Attachments[]) => {
-      const ids = attachments.map((a) => a.attachmentId)
-      const keys = attachments
-        .map((a) => a.key)
-        .filter((k): k is string => typeof k === "string")
-
-
-      if (ids.length === 0) {
-        toast.info("Không có tệp nào được chọn để xóa")
-        return
-      }
-
+  const getAttachments = useCallback(
+    async (page: number = pageIndex, size: number = pageSize, searchText?: string) => {
       try {
-        toast.loading("Đang xóa tệp...")
-
-        // 🗑️ 1️⃣ Xóa trong DB
-        const dbRes = await api.delete("/api/attachments/batch-delete", { data: ids })
-        console.log("✅ Kết quả xóa DB:", dbRes.data)
-
-        // ☁️ 2️⃣ Xóa file thật trên R2
-        if (keys.length > 0) {
-          const res = await r2Fetch<DeleteListResponse, { keys: string[] }>(
-            "delete-list",
-            { body: { keys } }
-          )
-          console.log("✅ Kết quả xóa R2:", res)
-          if (res.errors && res.errors.length > 0) {
-            console.warn("⚠️ Một số file không xóa được:", res.errors)
-          }
-        }
-
-        toast.success(`Đã xóa ${ids.length} tệp đính kèm`)
-        await getAttachments(pageIndex, pageSize, debouncedSearch)
-      } catch (err) {
-        console.error("❌ Lỗi khi xóa danh sách:", err)
-        toast.error("Không thể xóa các tệp đính kèm đã chọn")
+        setLoading(true)
+        toast.loading("Đang tải dữ liệu...")
+        const res = await api.get("/api/attachments/with-entities", {
+          params: { page, size, search: searchText ?? debouncedSearch },
+        })
+        setPageData(res.data)
+      } catch {
+        toast.error("Không thể tải danh sách tệp")
       } finally {
+        setLoading(false)
         toast.dismiss()
       }
     },
-    [getAttachments, pageIndex, pageSize, debouncedSearch]
+    [pageIndex, pageSize, debouncedSearch]
   )
 
+  // 🔹 Reload sau khi upload
+  const handleUploadSuccess = useCallback(
+    async (uploadedFiles: attachmentsRequest[]) => {
+      toast.success(`Đã upload ${uploadedFiles.length} tệp mới!`)
+      setUploadOpen(false)
+      await getAttachments()
+    },
+    [getAttachments]
+  )
 
-  // 🔹 Xoá 1 item trong DB và trên R2
-  const deleteAttachment = useCallback(
-    async (item: Attachments) => {
+  // 🔹 Xóa danh sách
+  const deleteListAttachments = useCallback(
+    async (attachments: AttachmentWithEntities[]) => {
+      const ids = attachments.map((a) => a.attachmentId)
+      const keys = attachments.map((a) => a.key).filter((k): k is string => !!k)
+      if (ids.length === 0) return toast.info("Không có tệp để xóa")
+
       try {
-        toast.loading("Đang xóa tệp...")
-
-        // 🗑️ Xóa DB
-        await api.delete(`/api/attachments/${item.attachmentId}`)
-
-        // ☁️ Xóa thật trên R2
-        if (item.key) {
-          const res = await r2Fetch<DeleteFileResponse, { key: string }>(
-            "delete-file",
-            { body: { key: item.key } }
-          )
-          if (res.success) console.log("☁️ Đã xóa R2:", res.key)
-        }
-
-        toast.success(`Đã xóa tệp: ${item.fileName}`)
-        await getAttachments(pageIndex, pageSize, debouncedSearch)
-      } catch (err) {
-        console.error("❌ Lỗi khi xóa tệp:", err)
-        toast.error(`Không thể xóa tệp: ${item.fileName}`)
+        toast.loading("Đang xóa...")
+        await api.delete("/api/attachments/batch-delete", { data: ids })
+        if (keys.length)
+          await r2Fetch<DeleteListResponse, { keys: string[] }>("delete-list", { body: { keys } })
+        toast.success(`Đã xóa ${ids.length} tệp`)
+        await getAttachments()
+      } catch {
+        toast.error("Không thể xóa tệp")
       } finally {
         toast.dismiss()
       }
     },
-    [getAttachments, pageIndex, pageSize, debouncedSearch]
+    [getAttachments]
+  )
+
+  // 🔹 Xóa 1 file
+  const handleDelete = useCallback(
+    (row: AttachmentWithEntities) => {
+      confirmToast({
+        title: "Xóa tệp đính kèm?",
+        description: `Tệp "${row.fileName}" sẽ bị xóa vĩnh viễn.`,
+        confirmText: "Xóa",
+        onConfirm: async () => {
+          try {
+            toast.loading("Đang xóa...")
+            await api.delete(`/api/attachments/${row.attachmentId}`)
+            if (row.key)
+              await r2Fetch<DeleteFileResponse, { key: string }>("delete-file", { body: { key: row.key } })
+            toast.success(`Đã xóa: ${row.fileName}`)
+            await getAttachments()
+          } catch {
+            toast.error("Không thể xóa tệp")
+          } finally {
+            toast.dismiss()
+          }
+        },
+      })
+    },
+    [getAttachments]
   )
 
   // 🔹 Debounce tìm kiếm
@@ -211,97 +175,59 @@ export default function AttachmentsListTable() {
 
   // 🔹 Load dữ liệu
   useEffect(() => {
-    setLoading(true)
-    getAttachments(pageIndex, pageSize, debouncedSearch).finally(() =>
-      setLoading(false)
-    )
-  }, [getAttachments, pageIndex, pageSize, debouncedSearch])
-
-  // 🔹 Xử lý hành động xóa nhiều
-  const handleDeleteSelected = useCallback(async () => {
-    if (selected.length === 0) {
-      toast.info("Không có tệp nào để xóa")
-      return
-    }
-
-    confirmToast({
-      title: "Xóa tệp đính kèm?",
-      description: `Bạn có chắc muốn xóa ${selected.length} tệp này không?`,
-      confirmText: "Xóa",
-      onConfirm: async () => {
-        await deleteListAttachments(selected)
-      },
-    })
-  }, [selected, deleteListAttachments])
-
-  // 🔹 Xử lý xóa 1 dòng
-  const handleDelete = useCallback(
-    async (row: Attachments) => {
-      confirmToast({
-        title: "Xóa tệp đính kèm?",
-        description: `Tệp "${row.fileName}" sẽ bị xóa vĩnh viễn khỏi hệ thống.`,
-        confirmText: "Xóa",
-        onConfirm: async () => {
-          await deleteAttachment(row)
-        },
-      })
-    },
-    [deleteAttachment]
-  )
-
-  const handleExportCSV = useCallback(() => {
-    toast.info("⚙️ Chức năng xuất CSV đang được phát triển...")
-  }, [])
+    getAttachments()
+  }, [getAttachments])
 
   // 🧰 Toolbar Actions
   const toolbarActions = useMemo(() => {
     const base = [
       {
         label: "Upload File",
-        href: "/erp-1/attachments/new",
         icon: <Upload className="h-4 w-4" />,
-        
+        onClick: () => setUploadOpen(true),
       },
       {
-        label: "Xuất CSV",
-        onClick: handleExportCSV,
-        icon: <FileDown className="h-4 w-4" />,
+        label: "Reload",
+        icon: <RefreshCcw className="h-4 w-4" />,
+        onClick: () => {
+          // toast.info("🔄 Đang tải lại danh sách...")
+          getAttachments()
+        },
         variant: "secondary" as const,
       },
     ]
-    if (selected.length > 0) {
+    if (selected.length)
       base.push({
         label: `Xóa (${selected.length})`,
-        onClick: handleDeleteSelected,
-        variant: "secondary" as const,
+        onClick: () => void deleteListAttachments(selected),
         icon: <Trash className="h-4 w-4" />,
+        variant: "secondary" as const,
       })
-    }
     return base
-  }, [selected, handleDeleteSelected])
-
-  // 🧰 Row Actions
-  const rowActions = useMemo(
-    () => [
-      {
-        label: "Sửa",
-        href: "/erp-1/attachments/:id",
-      },
-      {
-        label: "Xóa",
-        onClick: (row: Attachments) => handleDelete(row),
-        variant: "destructive" as const,
-      },
-    ],
-    [handleDelete]
-  )
+  }, [selected, deleteListAttachments, getAttachments])
 
   return (
-    <div className="p-2">
+    <div className="p-0">
+      {/* 🔹 Uppy dialog */}
+      <div className="hidden">
+
+      <UppyDialog onUploadSuccess={handleUploadSuccess} open={uploadOpen} onOpenChange={setUploadOpen} />
+      </div>
+
+      {/* 🔹 Dialog chi tiết file */}
+      {selectedFile && (
+        <DialogAttachmentInfo
+          file={selectedFile}
+          open={!!selectedFile}
+          onOpenChange={() => setSelectedFile(null)}
+        />
+      )}
+
+      {/* 🔹 DataTable */}
       {loading || !pageData ? (
         <p>Đang tải dữ liệu...</p>
       ) : (
-        <DataTable<Attachments, unknown>
+        <DataTable<AttachmentWithEntities, unknown>
           columns={columns}
           pageData={pageData}
           onPageChange={setPageIndex}
@@ -310,9 +236,19 @@ export default function AttachmentsListTable() {
           onSearchChange={setSearch}
           onSelectionChange={setSelected}
           toolbarActions={toolbarActions}
-          actions={rowActions}
+          actions={[
+            { label: "Xóa", onClick: (row) => handleDelete(row), variant: "destructive" as const },
+          ]}
           onRowClick={(row) =>
-            toast.info(`Chức năng xem chi tiết đang được phát triển...`)
+            setSelectedFile({
+              fileName: row.fileName ?? "",
+              fileType: row.fileType ?? "",
+              fileSize: row.fileSize ?? 0,
+              uploadedAt: row.uploadedAt ?? new Date().toISOString(),
+              key: row.key ?? undefined,
+              attachedEntities: row.attachedEntities ?? [],
+              attached: row.attached ?? false,
+            })
           }
         />
       )}

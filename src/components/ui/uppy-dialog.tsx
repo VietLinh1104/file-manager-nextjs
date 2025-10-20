@@ -41,11 +41,17 @@ const fetchUploadApiEndpoint = async (endpoint: string, data: object) => {
 /** 🔹 Component upload file trong Dialog */
 export function UppyDialog({
   onUploadSuccess,
+  open,
+  onOpenChange,
 }: {
   onUploadSuccess: (result: attachmentsRequest[]) => void
+  open?: boolean
+  onOpenChange?: (value: boolean) => void
 }) {
   const [isUploading, setIsUploading] = useState(false)
-  const [open, setOpen] = useState(false)
+  const [internalOpen, setInternalOpen] = useState(false)
+  const effectiveOpen = open ?? internalOpen
+  const effectiveSetOpen = onOpenChange ?? setInternalOpen
 
   /** ✅ Khởi tạo Uppy */
   const uppy = useMemo(() => {
@@ -83,7 +89,6 @@ export function UppyDialog({
     const handleComplete = async (result: UploadResult) => {
       setIsUploading(false)
 
-      // 🟢 Format dữ liệu từ Uppy response
       const uploadedFiles = result.successful.map((s) => {
         const body = s.response?.body || {}
         return {
@@ -97,39 +102,26 @@ export function UppyDialog({
       })
 
       if (!uploadedFiles?.length) return
-      console.log("✅ Upload thành công:", uploadedFiles)
       toast.success(`Upload thành công ${uploadedFiles.length} tệp!`)
 
-      // 🟢 Gọi API /api/attachments/list để lưu và nhận attachmentId
       try {
         const res = await api.post("/api/attachments/list", uploadedFiles)
         const savedFiles = res.data.map((f: any) => ({
-          attachmentId: f.attachmentId, // backend trả về
+          attachmentId: f.attachmentId,
           fileName: f.fileName,
           filePath: f.filePath,
           fileType: f.fileType,
           fileSize: f.fileSize,
           uploadedAt: f.uploadedAt,
         }))
-
-        console.log("💾 Lưu DB thành công:", savedFiles)
         toast.success("Đã lưu tệp vào ERP-1!")
-
-        // 🔹 Trả về cho DynamicForm
         onUploadSuccess(savedFiles)
 
-        // ✅ Reset Uppy
-        try {
-          if (typeof (uppy as any).cancelAll === "function") uppy.cancelAll()
-          const fileIds = uppy.getFiles().map((f) => f.id)
-          fileIds.forEach((id) => uppy.removeFile(id))
-          if (typeof (uppy as any).resetProgress === "function") uppy.resetProgress()
-        } catch (resetErr) {
-          console.warn("⚠️ Lỗi reset:", resetErr)
-        }
+        if (typeof (uppy as any).cancelAll === "function") uppy.cancelAll()
+        uppy.getFiles().forEach((f) => uppy.removeFile(f.id))
+        if (typeof (uppy as any).resetProgress === "function") uppy.resetProgress()
 
-        // ✅ Đóng dialog sau 1s
-        setTimeout(() => setOpen(false), 1000)
+        setTimeout(() => effectiveSetOpen(false), 1000)
       } catch (err) {
         console.error("❌ Lỗi khi lưu attachments:", err)
         toast.error("Không thể lưu danh sách file vào ERP-1")
@@ -138,7 +130,7 @@ export function UppyDialog({
 
     uppy.on("complete", handleComplete)
     return () => uppy.off("complete", handleComplete)
-  }, [uppy, onUploadSuccess])
+  }, [uppy, onUploadSuccess, effectiveSetOpen])
 
   /** 🔹 Nút upload */
   const handleUpload = () => {
@@ -147,7 +139,6 @@ export function UppyDialog({
       toast.warning("Vui lòng chọn ít nhất một tệp.")
       return
     }
-    console.log("📂 Bắt đầu upload:", files.map((f) => f.name))
     setIsUploading(true)
     uppy.upload().catch((err) => {
       console.error("❌ Lỗi upload:", err)
@@ -156,7 +147,7 @@ export function UppyDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={effectiveOpen} onOpenChange={effectiveSetOpen} >
       <DialogTrigger asChild>
         <Button variant="outline">
           <Upload className="mr-2 h-4 w-4" /> Tải lên tệp đính kèm
