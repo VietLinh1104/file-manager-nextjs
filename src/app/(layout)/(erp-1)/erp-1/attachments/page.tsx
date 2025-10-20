@@ -13,6 +13,7 @@ import { r2Fetch, DeleteFileResponse, DeleteListResponse } from "@/lib/r2"
 import { UppyDialog } from "@/components/ui/uppy-dialog"
 import { DialogAttachmentInfo } from "@/components/ui/dialog-attachment-info"
 import type { attachmentsRequest } from "@/types/erp-1/attachmentsRequest"
+import { DataTableSkeleton } from "@/components/ui/data-table-skeleton"
 
 // 🧩 Mở rộng kiểu Attachments để có thông tin entity
 export interface AttachmentWithEntities extends Attachments {
@@ -207,7 +208,7 @@ export default function AttachmentsListTable() {
   }, [selected, deleteListAttachments, getAttachments])
 
   return (
-    <div className="p-0">
+    <div className="p-2">
       {/* 🔹 Uppy dialog */}
       <div className="hidden">
 
@@ -225,7 +226,11 @@ export default function AttachmentsListTable() {
 
       {/* 🔹 DataTable */}
       {loading || !pageData ? (
-        <p>Đang tải dữ liệu...</p>
+        <DataTableSkeleton
+          columns={5}
+          rows={10}
+          toolbarActions={toolbarActions} // 🔥 Truyền y hệt toolbar chính
+        />
       ) : (
         <DataTable<AttachmentWithEntities, unknown>
           columns={columns}

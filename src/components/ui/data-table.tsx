@@ -40,6 +40,7 @@ interface HasId {
   id?: string | number
   transactionId?: string
   attachmentId?: string
+  partnerId?: string
 }
 
 export interface ActionItem<TData extends HasId> {

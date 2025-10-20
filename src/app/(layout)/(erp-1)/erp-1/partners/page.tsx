@@ -9,83 +9,81 @@ import { toast } from "sonner"
 import api from "@/lib/axios"
 import { useRouter } from "next/navigation"
 import { confirmToast } from "@/components/ui/confirm-toast"
-
-import type { SpringPage } from "@/components/ui/data-table" // ⚡ import kiểu SpringPage
+import { Partners } from "@/api/swagger/models/Partners"
 import { DataTableSkeleton } from "@/components/ui/data-table-skeleton"
+import type { SpringPage } from "@/components/ui/data-table" // ⚡ import kiểu SpringPage
 
-// 🧱 Định nghĩa cột
-export const columns: ColumnDef<Transactions>[] = [
-	{
-		accessorKey: "partner.name",
-		header: "Đối tác",
-		cell: ({ row }) => row.original.partner?.name ?? "—",
-	},
-	{
-		accessorKey: "transactionCategory.name",
-		header: "Danh mục giao dịch",
-		cell: ({ row }) => row.original.transactionCategory?.name ?? "—",
-	},
-	{
-		accessorKey: "amount",
-		header: "Số tiền",
-		cell: ({ row }) => {
-			const val = row.original.amount ?? 0
-			return val.toLocaleString("vi-VN")
-		},
-	},
-	{
-		accessorKey: "transactionType",
-		header: "Loại giao dịch",
-		cell: ({ row }) => (row.original.transactionType === "INCOME" ? "Thu" : "Chi"),
-	},
-	{
-		accessorKey: "status",
-		header: "Trạng thái",
-		cell: ({ row }) => {
-			const val = row.original.status
-			return (
-				<span className="px-2 py-1 rounded bg-blue-100 text-blue-700 text-xs">
-					{val as string}
-				</span>
-			)
-		},
-	},
-	{
-		accessorKey: "createdAt",
-		header: "Ngày tạo",
-		cell: ({ row }) =>
-			row.original.createdAt
-				? new Date(row.original.createdAt).toLocaleDateString("vi-VN")
-				: "",
-	},
-	{
-		accessorKey: "updatedAt",
-		header: "Ngày cập nhật",
-		cell: ({ row }) =>
-			row.original.updatedAt
-				? new Date(row.original.updatedAt).toLocaleDateString("vi-VN")
-				: "",
-	},
+
+export const columns: ColumnDef<Partners>[] = [
+ {
+    accessorKey: "name",
+    header: "Tên đối tác",
+    cell: ({ row }) => {
+      const val = row.getValue("name")
+      return val
+    }
+  },
+ {
+    accessorKey: "type",
+    header: "Danh mục",
+    cell: ({ row }) => {
+      const val = row.getValue("type")
+      return <span className="px-2 py-1 rounded bg-blue-100 text-blue-700 text-xs">{val as string}</span>
+    }
+  },
+ {
+    accessorKey: "email",
+    header: "Email",
+    cell: ({ row }) => {
+      const val = row.getValue("email")
+      return val
+    }
+  },
+ {
+    accessorKey: "phone",
+    header: "Số điện thoại",
+    cell: ({ row }) => {
+      const val = row.getValue("phone")
+      return val
+    }
+  },
+ {
+    accessorKey: "address",
+    header: "Địa chỉ",
+    cell: ({ row }) => {
+      const val = row.getValue("address")
+      return val
+    }
+  },
+ {
+    accessorKey: "createdAt",
+    header: "Create At",
+    cell: ({ row }) => {
+      const val = row.getValue("createdAt")
+      return val ? new Date(val as Date).toLocaleDateString() : ""
+    }
+  }
 ]
+
 
 // 🧩 Component chính
 export default function TransactionListTable() {
 	//#region State
-	const [pageData, setPageData] = useState<SpringPage<Transactions>>() // ✅ dùng kiểu Page<Transactions>
+	const [pageData, setPageData] = useState<SpringPage<Partners>>() // ✅ dùng kiểu Page<Transactions>
 	const [pageIndex, setPageIndex] = useState(0)
 	const [pageSize] = useState(10)
 	const [loading, setLoading] = useState(false)
 	const [search, setSearch] = useState("")
 	const [debouncedSearch, setDebouncedSearch] = useState("")
-	const [selected, setSelected] = useState<Transactions[]>([])
+	const [selected, setSelected] = useState<Partners[]>([])
     const router = useRouter()
 	//#endregion
 
 	//#region Gọi API
-	async function getTransactions(page: number, size: number, search?: string) {
+	async function getPartners(page: number, size: number, search?: string) {
 		try {
 			toast.loading("Đang tải dữ liệu...")
-			const res = await api.get("/api/transactions", {
+			const res = await api.get("/api/partners", {
 				params: {
 					page, // ⚠️ Nếu backend Spring 1-based → dùng page + 1
 					size,
@@ -102,11 +100,11 @@ export default function TransactionListTable() {
 		}
 	}
 
-    async function deleteListTransaction(transactionIds: string[]) {
+    async function deleteListTransaction(objIds: string[]) {
 		try {
-            await api.delete("/api/transactions/batch-delete", { data: transactionIds })
-            toast.success(`Đã xóa ${transactionIds.length} giao dịch`)
-            await getTransactions(pageIndex, pageSize, debouncedSearch)
+            await api.delete("/api/transactions/batch-delete", { data: objIds })
+            toast.success(`Đã xóa ${objIds.length} giao dịch`)
+            await getPartners(pageIndex, pageSize, debouncedSearch)
         } catch (err) {
             console.error("❌ Lỗi khi xóa:", err)
             toast.error("Không thể xóa giao dịch")
@@ -117,7 +115,7 @@ export default function TransactionListTable() {
 		try {
             await api.delete(`/api/transactions/${id}`)
             toast.success(`Đã xóa giao dịch với ID: ${id}`)
-            await getTransactions(pageIndex, pageSize, debouncedSearch)
+            await getPartners(pageIndex, pageSize, debouncedSearch)
         } catch (err) {
             console.error("❌ Lỗi khi xóa:", err)
             toast.error(`Không thể xóa giao dịch Error: ${err}`)
@@ -131,7 +129,7 @@ export default function TransactionListTable() {
 
 	useEffect(() => {
 		setLoading(true)
-		getTransactions(pageIndex, pageSize, debouncedSearch).finally(() =>
+		getPartners(pageIndex, pageSize, debouncedSearch).finally(() =>
 			setLoading(false)
 		)
 	}, [pageIndex, debouncedSearch, pageSize])
@@ -140,13 +138,13 @@ export default function TransactionListTable() {
 	//#region Action handlers
     const handleDeleteSelected = React.useCallback(async () => {
         // Lấy danh sách transactionId đã chọn
-        const transactionIds = selected
-            .map((t) => t.transactionId)
+        const objIds = selected
+            .map((t) => t.partnerId)
             .filter((id): id is string => !!id)
 
-        console.log("🧾 Các transactionId đã chọn:", transactionIds)
+        console.log("🧾 Các transactionId đã chọn:", objIds)
 
-        if (transactionIds.length === 0) {
+        if (objIds.length === 0) {
             toast.info("Không có giao dịch nào để xóa")
             return
         }
@@ -156,7 +154,7 @@ export default function TransactionListTable() {
             description: "Hành động này sẽ xóa vĩnh viễn dữ liệu.",
             confirmText: "Xóa",
             onConfirm: async () => {
-                await deleteListTransaction(transactionIds);
+                await deleteListTransaction(objIds);
             },
         })
     }, [selected])
@@ -185,7 +183,7 @@ export default function TransactionListTable() {
 		const base = [
 			{
 				label: "Thêm mới",
-				href: "/erp-1/transactions/new",
+				href: "/erp-1/partners/new",
 				icon: <Plus className="h-4 w-4" />,
 			},
 			{
@@ -210,7 +208,7 @@ export default function TransactionListTable() {
 		() => [
 			{
 				label: "Sửa",
-				href: "/erp-1/transactions/:id",
+				href: "/erp-1/partners/:id",
 			},
 			{
 				label: "Xóa",
@@ -232,7 +230,7 @@ export default function TransactionListTable() {
 					toolbarActions={toolbarActions} // 🔥 Truyền y hệt toolbar chính
 				/>
 			) : (
-				<DataTable<Transactions, unknown>
+				<DataTable<Partners, unknown>
 					columns={columns}
 					pageData={pageData} // ✅ dùng đúng prop
 					onPageChange={setPageIndex}
@@ -243,7 +241,7 @@ export default function TransactionListTable() {
 					toolbarActions={toolbarActions}
 					actions={rowActions}
 					onRowClick={(row) =>
-						router.push(`/erp-1/transactions/${row.transactionId}`)
+						router.push(`/erp-1/transactions/${row.partnerId}`)
 					}
 				/>
 			)}
