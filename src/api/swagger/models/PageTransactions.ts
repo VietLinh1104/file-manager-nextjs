@@ -8,14 +8,14 @@ import type { Transactions } from './Transactions';
 export type PageTransactions = {
     totalElements?: number;
     totalPages?: number;
+    first?: boolean;
+    last?: boolean;
     size?: number;
     content?: Array<Transactions>;
     number?: number;
     sort?: SortObject;
-    pageable?: PageableObject;
-    first?: boolean;
-    last?: boolean;
     numberOfElements?: number;
+    pageable?: PageableObject;
     empty?: boolean;
 };
 

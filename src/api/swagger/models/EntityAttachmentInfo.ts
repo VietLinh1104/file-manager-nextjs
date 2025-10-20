@@ -2,9 +2,8 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-export type SortObject = {
-    empty?: boolean;
-    unsorted?: boolean;
-    sorted?: boolean;
+export type EntityAttachmentInfo = {
+    entity_name?: string;
+    entity_id?: string;
 };
 

@@ -1,4 +1,6 @@
-import React, { useState } from "react"
+"use client"
+
+import React, { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -30,7 +32,6 @@ import {
 import { CalendarIcon, Eye, EyeOff, Pencil, Trash } from "lucide-react"
 import { format } from "date-fns"
 import { UppyDialog } from "@/components/ui/uppy-dialog"
-import { attachmentsRequest } from "@/types/erp-1/attachmentsRequest"
 import { Attachments } from "@/api/swagger"
 import { AttachmentList } from "@/components/ui/attachment-list"
 
@@ -60,7 +61,7 @@ interface DynamicFormProps {
   title: string
   description?: string
   fields: Field[]
-  onSubmit?: (values: Record<string, unknown>) => void
+  onSubmit?: (values: Record<string, unknown>) => Promise<void> | void
   disabledFields?: string[]
   isSubmitting?: boolean
   readOnly?: boolean
@@ -79,6 +80,9 @@ export function DynamicForm({
   onEditClick,
   onDeleteClick,
 }: DynamicFormProps) {
+  // ✅ local state kiểm soát disable thực tế
+  const [internalSubmitting, setInternalSubmitting] = useState(false)
+
   // ✅ Tạo schema động
   const schemaObj: Record<string, z.ZodTypeAny> = {}
   fields.forEach((f) => {
@@ -142,15 +146,41 @@ export function DynamicForm({
   const togglePassword = (id: string) =>
     setShowPassword((prev) => ({ ...prev, [id]: !prev[id] }))
 
-  const handleSubmit = (values: z.infer<typeof formSchema>) => {
-    console.log("📤 Form values:", values)
-    onSubmit?.(values)
+  // ✅ xử lý submit và kiểm soát trạng thái
+  const handleSubmit = async (values: z.infer<typeof formSchema>) => {
+    try {
+      setInternalSubmitting(true)
+      await onSubmit?.(values)
+      toast.success("✅ Lưu dữ liệu thành công!")
+      form.reset(values)
+    } catch (err) {
+      console.error("❌ Lỗi khi lưu:", err)
+      toast.error("Không thể lưu dữ liệu")
+    } finally {
+      setInternalSubmitting(false)
+    }
   }
 
   const handleReset = () => {
     form.reset()
     form.clearErrors()
   }
+
+  // 🛑 Cảnh báo khi rời trang nếu form chưa lưu
+  useEffect(() => {
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (internalSubmitting || form.formState.isDirty) {
+        event.preventDefault()
+        event.returnValue =
+          "Bạn có thay đổi chưa lưu. Rời khỏi trang sẽ mất dữ liệu!"
+      }
+    }
+
+    window.addEventListener("beforeunload", handleBeforeUnload)
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload)
+  }, [internalSubmitting, form.formState.isDirty])
+
+  const disabledAll = internalSubmitting || isSubmitting
 
   return (
     <Form {...form}>
@@ -162,12 +192,24 @@ export function DynamicForm({
         {/* 🧭 Góc phải: Edit/Delete */}
         <div className="absolute top-4 right-4 flex gap-2">
           {onEditClick && (
-            <Button type="button" size="sm" variant="secondary" onClick={onEditClick}>
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              onClick={onEditClick}
+              disabled={disabledAll}
+            >
               <Pencil className="h-4 w-4 mr-1" /> Sửa
             </Button>
           )}
           {onDeleteClick && (
-            <Button type="button" size="sm" variant="destructive" onClick={onDeleteClick}>
+            <Button
+              type="button"
+              size="sm"
+              variant="destructive"
+              onClick={onDeleteClick}
+              disabled={disabledAll}
+            >
               <Trash className="h-4 w-4 mr-1" /> Xóa
             </Button>
           )}
@@ -185,7 +227,7 @@ export function DynamicForm({
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
           {fields.map((field) => {
             const isDisabled =
-              readOnly || isSubmitting || disabledFields.includes(field.id) || field.disabled
+              readOnly || disabledAll || disabledFields.includes(field.id) || field.disabled
 
             return (
               <FormField
@@ -199,33 +241,28 @@ export function DynamicForm({
                     <FormLabel>{field.label}</FormLabel>
                     <FormControl>
                       {field.type === "file" ? (
-                              <div className="flex flex-col gap-2">
-                                {/* Nếu readonly thì hiển thị danh sách file */}
-                                {readOnly ? (
-                                  <AttachmentList files={rhfField.value as Attachments[]} readOnly />
-                                ) : (
-                                  <>
-                                    {/* Upload file */}
-                                    <UppyDialog
-                                      onUploadSuccess={(uploadedFiles) => {
-                                        // 🟢 Gộp file mới với danh sách hiện tại
-                                        const current = (rhfField.value as Attachments[]) ?? []
-                                        const merged = [...current, ...uploadedFiles]
-                                        form.setValue(field.id, merged, { shouldDirty: true })
-                                      }}
-                                    />
-
-                                    {/* Danh sách file có thể xóa */}
-                                    <AttachmentList
-                                      files={(rhfField.value as Attachments[]) ?? []}
-                                      onChange={(newFiles) => {
-                                        form.setValue(field.id, newFiles)
-                                      }}
-                                    />
-                                  </>
-                                )}
-                              </div>
-                            ) : field.type === "textarea" ? (
+                        <div className="flex flex-col gap-2">
+                          {readOnly ? (
+                            <AttachmentList files={rhfField.value as Attachments[]} readOnly />
+                          ) : (
+                            <>
+                              <UppyDialog
+                                onUploadSuccess={(uploadedFiles) => {
+                                  const current = (rhfField.value as Attachments[]) ?? []
+                                  const merged = [...current, ...uploadedFiles]
+                                  form.setValue(field.id, merged, { shouldDirty: true })
+                                }}
+                              />
+                              <AttachmentList
+                                files={(rhfField.value as Attachments[]) ?? []}
+                                onChange={(newFiles) => {
+                                  form.setValue(field.id, newFiles)
+                                }}
+                              />
+                            </>
+                          )}
+                        </div>
+                      ) : field.type === "textarea" ? (
                         <Textarea
                           placeholder={field.placeholder}
                           {...rhfField}
@@ -337,14 +374,14 @@ export function DynamicForm({
         {/* Footer */}
         {!readOnly && (
           <div className="flex justify-end gap-2">
-            <Button type="reset" variant="outline">
+            <Button type="reset" variant="outline" disabled={disabledAll}>
               Hủy
             </Button>
-            <Button 
-              type="submit" 
-              disabled={isSubmitting || !form.formState.isDirty}
-              >
-              Lưu
+            <Button
+              type="submit"
+              disabled={disabledAll || !form.formState.isDirty}
+            >
+              {disabledAll ? "Đang lưu..." : "Lưu"}
             </Button>
           </div>
         )}

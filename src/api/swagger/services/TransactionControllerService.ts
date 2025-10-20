@@ -104,4 +104,19 @@ export class TransactionControllerService {
             url: '/api/transactions/all',
         });
     }
+    /**
+     * @param requestBody
+     * @returns string OK
+     * @throws ApiError
+     */
+    public static deleteListTransaction(
+        requestBody: Array<string>,
+    ): CancelablePromise<string> {
+        return __request(OpenAPI, {
+            method: 'DELETE',
+            url: '/api/transactions/batch-delete',
+            body: requestBody,
+            mediaType: 'application/json',
+        });
+    }
 }

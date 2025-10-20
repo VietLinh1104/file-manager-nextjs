@@ -7,12 +7,15 @@ export { CancelablePromise, CancelError } from './core/CancelablePromise';
 export { OpenAPI } from './core/OpenAPI';
 export type { OpenAPIConfig } from './core/OpenAPI';
 
+export type { AttachmentResponse } from './models/AttachmentResponse';
 export type { Attachments } from './models/Attachments';
 export type { AttachmentsRequest } from './models/AttachmentsRequest';
 export type { AuthRequest } from './models/AuthRequest';
 export type { AuthResponse } from './models/AuthResponse';
+export type { EntityAttachmentInfo } from './models/EntityAttachmentInfo';
 export type { Pageable } from './models/Pageable';
 export type { PageableObject } from './models/PageableObject';
+export type { PageAttachmentResponse } from './models/PageAttachmentResponse';
 export type { PageAttachments } from './models/PageAttachments';
 export type { PagePartners } from './models/PagePartners';
 export type { PageRole } from './models/PageRole';
@@ -34,8 +37,6 @@ export { AttachmentsControllerService } from './services/AttachmentsControllerSe
 export { AuthControllerService } from './services/AuthControllerService';
 export { PartnersControllerService } from './services/PartnersControllerService';
 export { RoleControllerService } from './services/RoleControllerService';
-export { StartCreateUserProcessControllerService } from './services/StartCreateUserProcessControllerService';
-export { SubmitUserInfoControllerService } from './services/SubmitUserInfoControllerService';
 export { TransactionCategoryControllerService } from './services/TransactionCategoryControllerService';
 export { TransactionControllerService } from './services/TransactionControllerService';
 export { UserControllerService } from './services/UserControllerService';

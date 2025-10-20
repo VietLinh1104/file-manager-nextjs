@@ -5,6 +5,7 @@
 import type { Attachments } from '../models/Attachments';
 import type { AttachmentsRequest } from '../models/AttachmentsRequest';
 import type { Pageable } from '../models/Pageable';
+import type { PageAttachmentResponse } from '../models/PageAttachmentResponse';
 import type { PageAttachments } from '../models/PageAttachments';
 import type { CancelablePromise } from '../core/CancelablePromise';
 import { OpenAPI } from '../core/OpenAPI';
@@ -21,7 +22,7 @@ export class AttachmentsControllerService {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/attachments/{id}',
-            query: {
+            path: {
                 'id': id,
             },
         });
@@ -39,7 +40,7 @@ export class AttachmentsControllerService {
         return __request(OpenAPI, {
             method: 'PUT',
             url: '/api/attachments/{id}',
-            query: {
+            path: {
                 'id': id,
             },
             body: requestBody,
@@ -57,7 +58,7 @@ export class AttachmentsControllerService {
         return __request(OpenAPI, {
             method: 'DELETE',
             url: '/api/attachments/{id}',
-            query: {
+            path: {
                 'id': id,
             },
         });
@@ -94,6 +95,37 @@ export class AttachmentsControllerService {
         });
     }
     /**
+     * @param requestBody
+     * @returns Attachments OK
+     * @throws ApiError
+     */
+    public static createListAttachment(
+        requestBody: Array<AttachmentsRequest>,
+    ): CancelablePromise<Array<Attachments>> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/attachments/list',
+            body: requestBody,
+            mediaType: 'application/json',
+        });
+    }
+    /**
+     * @param pageable
+     * @returns PageAttachmentResponse OK
+     * @throws ApiError
+     */
+    public static getAttachmentsWithEntities(
+        pageable: Pageable,
+    ): CancelablePromise<PageAttachmentResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/attachments/with-entities',
+            query: {
+                'pageable': pageable,
+            },
+        });
+    }
+    /**
      * @returns Attachments OK
      * @throws ApiError
      */
@@ -101,6 +133,21 @@ export class AttachmentsControllerService {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/attachments/all',
+        });
+    }
+    /**
+     * @param requestBody
+     * @returns string OK
+     * @throws ApiError
+     */
+    public static deleteListAttachment(
+        requestBody: Array<string>,
+    ): CancelablePromise<string> {
+        return __request(OpenAPI, {
+            method: 'DELETE',
+            url: '/api/attachments/batch-delete',
+            body: requestBody,
+            mediaType: 'application/json',
         });
     }
 }

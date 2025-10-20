@@ -8,14 +8,14 @@ import type { SortObject } from './SortObject';
 export type PageAttachments = {
     totalElements?: number;
     totalPages?: number;
+    first?: boolean;
+    last?: boolean;
     size?: number;
     content?: Array<Attachments>;
     number?: number;
     sort?: SortObject;
-    pageable?: PageableObject;
-    first?: boolean;
-    last?: boolean;
     numberOfElements?: number;
+    pageable?: PageableObject;
     empty?: boolean;
 };
 

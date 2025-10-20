@@ -137,6 +137,8 @@ export default function GeneratedFormPage() {
 		} catch (err) {
 			console.error("❌ Lỗi khi lưu giao dịch:", err)
 			toast.error(`Lỗi khi lưu giao dịch: ${err}`)
+		}finally {
+			setIsEditing(false)
 		}
 	}
 

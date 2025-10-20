@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useCallback, useMemo } from "react"
 import { DataTable } from "@/components/ui/data-table"
 import { ColumnDef } from "@tanstack/react-table"
-import { Trash, Plus, FileDown } from "lucide-react"
+import { Trash, FileDown, Upload } from "lucide-react"
 import { toast } from "sonner"
 import api from "@/lib/axios"
 import { useRouter } from "next/navigation"
@@ -48,11 +48,8 @@ export const columns: ColumnDef<Attachments>[] = [
       const val = row.getValue("key") as string
       if (!val) return ""
 
-      // ✂️ Rút gọn key để hiển thị gọn gàng
       const shortKey =
-        val.length > 50
-          ? `${val.slice(0, 20)}...${val.slice(-6)}`
-          : val
+        val.length > 50 ? `${val.slice(0, 20)}...${val.slice(-6)}` : val
 
       return (
         <span
@@ -60,7 +57,7 @@ export const columns: ColumnDef<Attachments>[] = [
           title={`Click để sao chép\n${val}`}
           onClick={() => {
             navigator.clipboard.writeText(val)
-            toast.success("✅ Đã sao chép key vào clipboard")
+            toast.success("Đã sao chép key vào clipboard")
           }}
         >
           {shortKey}
@@ -74,6 +71,31 @@ export const columns: ColumnDef<Attachments>[] = [
     cell: ({ row }) => {
       const val = row.getValue("uploadedAt")
       return val ? new Date(val as Date).toLocaleString() : ""
+    },
+  },
+  // 🔹 Thêm cột trạng thái (isAttached)
+  {
+    accessorKey: "attached",
+    header: "Trạng thái",
+    cell: ({ row }) => {
+      const attached = row.getValue("attached") as boolean
+      return (
+        <div className="flex items-center gap-1">
+          {attached ? (
+            <>
+              <span className="px-2 py-1 rounded bg-blue-100 text-blue-700 text-xs">
+                Đã liên kết
+              </span>
+            </>
+          ) : (
+            <>
+              <span className="px-2 py-1 rounded bg-gray-100 text-gray-700 text-xs">
+                Chưa liên kết
+              </span>
+            </>
+          )}
+        </div>
+      )
     },
   },
 ]
@@ -93,7 +115,7 @@ export default function AttachmentsListTable() {
   const getAttachments = useCallback(async (page: number, size: number, search?: string) => {
     try {
       toast.loading("Đang tải dữ liệu...")
-      const res = await api.get("/api/attachments", {
+      const res = await api.get("/api/attachments/with-entities", {
         params: { page, size, search: search || "" },
       })
       setPageData(res.data)
@@ -113,6 +135,7 @@ export default function AttachmentsListTable() {
         .map((a) => a.key)
         .filter((k): k is string => typeof k === "string")
 
+
       if (ids.length === 0) {
         toast.info("Không có tệp nào được chọn để xóa")
         return
@@ -122,7 +145,8 @@ export default function AttachmentsListTable() {
         toast.loading("Đang xóa tệp...")
 
         // 🗑️ 1️⃣ Xóa trong DB
-        await api.delete("/api/attachments/batch-delete", { data: ids })
+        const dbRes = await api.delete("/api/attachments/batch-delete", { data: ids })
+        console.log("✅ Kết quả xóa DB:", dbRes.data)
 
         // ☁️ 2️⃣ Xóa file thật trên R2
         if (keys.length > 0) {
@@ -130,6 +154,7 @@ export default function AttachmentsListTable() {
             "delete-list",
             { body: { keys } }
           )
+          console.log("✅ Kết quả xóa R2:", res)
           if (res.errors && res.errors.length > 0) {
             console.warn("⚠️ Một số file không xóa được:", res.errors)
           }
@@ -146,6 +171,7 @@ export default function AttachmentsListTable() {
     },
     [getAttachments, pageIndex, pageSize, debouncedSearch]
   )
+
 
   // 🔹 Xoá 1 item trong DB và trên R2
   const deleteAttachment = useCallback(
@@ -231,9 +257,10 @@ export default function AttachmentsListTable() {
   const toolbarActions = useMemo(() => {
     const base = [
       {
-        label: "Thêm mới",
+        label: "Upload File",
         href: "/erp-1/attachments/new",
-        icon: <Plus className="h-4 w-4" />,
+        icon: <Upload className="h-4 w-4" />,
+        
       },
       {
         label: "Xuất CSV",
@@ -251,7 +278,7 @@ export default function AttachmentsListTable() {
       })
     }
     return base
-  }, [selected, handleDeleteSelected, handleExportCSV])
+  }, [selected, handleDeleteSelected])
 
   // 🧰 Row Actions
   const rowActions = useMemo(
@@ -285,7 +312,7 @@ export default function AttachmentsListTable() {
           toolbarActions={toolbarActions}
           actions={rowActions}
           onRowClick={(row) =>
-            router.push(`/erp-1/attachments/${row.attachmentId}`)
+            toast.info(`Chức năng xem chi tiết đang được phát triển...`)
           }
         />
       )}
